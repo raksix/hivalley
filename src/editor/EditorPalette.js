@@ -6,12 +6,12 @@
 import Phaser from 'phaser';
 import { ASSET_CATEGORIES, searchAssets, getAllAssets } from './AssetRegistry.js';
 
-const PANEL_W = 220;
-const ITEM_SIZE = 40;
-const ITEM_GAP = 4;
-const SEARCH_H = 30;
-const TAB_H = 28;
-const GRID_PADDING = 8;
+const PANEL_W = 200;
+const ITEM_SIZE = 36;
+const ITEM_GAP = 3;
+const SEARCH_H = 28;
+const TAB_H = 26;
+const GRID_PADDING = 6;
 
 export class EditorPalette {
   /**
@@ -23,7 +23,7 @@ export class EditorPalette {
     this.selectedAsset = null;
     this.currentCategory = 'tiles';
     this.searchQuery = '';
-    this.container = scene.add.container(0, 40);
+    this.container = scene.add.container(8, 40);
     this.container.setDepth(900);
 
     this._createPanel();
@@ -57,8 +57,8 @@ export class EditorPalette {
     // Kategori sekmeleri
     this._createCategoryTabs();
 
-    // Grid alanı - tab'ların bittiği yerden başla (max 2 satır tab)
-    const tabRows = Math.ceil(Object.keys(ASSET_CATEGORIES).length / 5);
+    // Grid alanı - tab'ların bittiği yerden başla (4 sütunlu tab düzeni)
+    const tabRows = Math.ceil(Object.keys(ASSET_CATEGORIES).length / 4);
     const gridY = SEARCH_H + 34 + tabRows * (TAB_H + 2) + 4;
     this.gridContainer = scene.add.container(0, gridY);
     this.container.add(this.gridContainer);
@@ -166,8 +166,8 @@ export class EditorPalette {
     const scene = this.scene;
     const y = SEARCH_H + 34;
     const categories = Object.keys(ASSET_CATEGORIES);
-    // Her satırda5 kategori sığdır (daha geniş tab)
-    const cols = 5;
+    // Her satırda 4 kategori sığdır (daha geniş tab, okunabilir)
+    const cols = 4;
     const tabWidth = (PANEL_W - GRID_PADDING * 2) / cols;
 
     this.tabButtons = [];
@@ -206,14 +206,17 @@ export class EditorPalette {
     const container = scene.add.container(x, y);
 
     const bg = scene.add.graphics();
-    bg.fillStyle(isActive ? 0x3a3a6e : 0x1e1e3a, 0.9);
+    bg.fillStyle(isActive ? 0x4a4a9e : 0x252545, 0.95);
     bg.fillRoundedRect(1, 0, width - 2, TAB_H, 3);
+    bg.lineStyle(isActive ? 1 : 0, isActive ? 0x7a7ade : 0x3a3a5e);
+    if (isActive) bg.strokeRoundedRect(1, 0, width - 2, TAB_H, 3);
     container.add(bg);
 
     const text = scene.add.text(width / 2, TAB_H / 2, label, {
-      fontSize: '8px',
-      color: isActive ? '#e8d5a3' : '#8888aa',
+      fontSize: '9px',
+      color: isActive ? '#ffeebb' : '#aaaacc',
       fontFamily: 'monospace',
+      fontStyle: isActive ? 'bold' : 'normal',
     }).setOrigin(0.5);
     container.add(text);
 
@@ -232,7 +235,7 @@ export class EditorPalette {
     container.on('pointerover', () => {
       if (this.currentCategory !== key) {
         bg.clear();
-        bg.fillStyle(0x2a2a5e, 0.9);
+        bg.fillStyle(0x353560, 0.95);
         bg.fillRoundedRect(1, 0, width - 2, TAB_H, 3);
       }
     });
@@ -240,7 +243,7 @@ export class EditorPalette {
     container.on('pointerout', () => {
       if (this.currentCategory !== key) {
         bg.clear();
-        bg.fillStyle(0x1e1e3a, 0.9);
+        bg.fillStyle(0x252545, 0.95);
         bg.fillRoundedRect(1, 0, width - 2, TAB_H, 3);
       }
     });
@@ -253,9 +256,9 @@ export class EditorPalette {
     this.tabButtons.forEach(({ key, btn }) => {
       const isActive = this.currentCategory === key;
       btn.bg.clear();
-      btn.bg.fillStyle(isActive ? 0x3a3a6e : 0x1e1e3a, 0.9);
+      btn.bg.fillStyle(isActive ? 0x4a4a9e : 0x252545, 0.95);
       btn.bg.fillRoundedRect(1, 0, btn.container.width - 2, TAB_H, 3);
-      btn.text.setColor(isActive ? '#e8d5a3' : '#8888aa');
+      btn.text.setColor(isActive ? '#ffeebb' : '#aaaacc');
     });
   }
 

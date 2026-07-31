@@ -37,6 +37,9 @@ export class WorldEditor extends Phaser.Scene {
     this._originalHeight = this.scale.height;
     this.scale.resize(1280, 720);
 
+    // Tam canvas arka planı — diğer sahnelerin görünmemesi için
+    this.cameras.main.setBackgroundColor('#0e0e1a');
+
     // ─── STATE ─────────────────────────────────────
     this.currentTool = 'paint';
     this.selectedAsset = null;
