@@ -42,12 +42,17 @@ export class WorldEditor extends Phaser.Scene {
 
     // Fare imlecini göster (CSS cursor: none'ı override et)
     this.input.setDefaultCursor('default');
+    // Canvas element'ine de cursor ata — CSS cascade'i override et
+    const canvas = this.game.canvas;
+    if (canvas) {
+      canvas.style.cursor = 'default';
+    }
 
     // CSS'i fullscreen yap — flex centering'i kaldır, canvas'ı tam ekran yap
     const gameEl = document.getElementById('game');
     if (gameEl) {
       this._prevGameStyle = gameEl.style.cssText;
-      gameEl.style.cssText = 'width:100vw;height:100vh;overflow:hidden;position:relative;';
+      gameEl.style.cssText = 'width:100vw;height:100vh;overflow:hidden;position:relative;cursor:default;';
     }
 
     // ─── STATE ─────────────────────────────────────
