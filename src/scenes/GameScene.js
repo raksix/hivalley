@@ -275,35 +275,7 @@ export class GameScene extends Phaser.Scene {
       place(c, 16, K.WATER_EDGE_S);
     }
 
-    // ---- Grass detail (decorative flowers & tufts) ----
-    // Avoid placing them on path (row 9), planks (rows 0/17), water (rows 13-15 cols 24-28),
-    // tilled-soil areas, or where objects sit.
-    const skipRows = new Set([0, 9, 17]);
-    const inTilled = (r, c) =>
-      (r >= 5 && r <= 7 && ((c >= 6 && c <= 12) || (c >= 17 && c <= 23)));
-    const inWater = (r, c) => r >= 13 && r <= 15 && c >= 24 && c <= 28;
-    const reserved = new Set([
-      ['3', '15'], ['4', '5'], ['12', '22'], ['14', '5'], // base flower spots
-      ['2', '26'], ['2', '27'], ['2', '28'], ['2', '29'], // house/shrubs area
-    ]);
-
-    const decorFlowers = [
-      K.GRASS_FLOWER_RED, K.GRASS_FLOWER_YELLOW, K.GRASS_FLOWER_BLUE,
-      K.GRASS_TUFT_A, K.GRASS_TUFT_B,
-    ];
-    let decorSeed = 7;
-    for (let r = 1; r < MAP_ROWS - 1; r++) {
-      if (skipRows.has(r)) continue;
-      for (let c = 1; c < MAP_COLS - 1; c++) {
-        if (inTilled(r, c) || inWater(r, c)) continue;
-        if (reserved.has(`${r},${c}`)) continue;
-        // Very sparse: ~every 12 tiles for a clean look
-        decorSeed = (decorSeed * 1103515245 + 12345) & 0x7fffffff;
-        if (decorSeed % 12 !== 0) continue;
-        const frame = decorFlowers[decorSeed % decorFlowers.length];
-        place(c, r, frame);
-      }
-    }
+    // (No grass detail decorations — just clean grass ground)
 
     // ---- New decorations (decorative objects) ----
     // Bush (avoiding overlap with tilled plots, fences, and house/shrubs area)
