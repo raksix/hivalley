@@ -126,8 +126,8 @@ export class Button extends Phaser.GameObjects.Container {
 
     this.on('pointerupoutside', () => this._setPressed(false));
 
-    // Additional safety: reset pressed on visibility/active changes
-    this.on('destroy', () => this._setPressed(false));
+    // No-op: do NOT call _setPressed on destroy — the scene is shutting
+    // down and Text internals (canvas) may already be null.
 
     scene.add.existing(this);
     this._refresh();
@@ -153,6 +153,8 @@ export class Button extends Phaser.GameObjects.Container {
   }
 
   _refresh() {
+    // Bail if the scene is shutting down — Text internals (canvas) may be null.
+    if (!this.scene?.sys?.isActive()) return;
     let key;
     if (this.disabled) key = this.cfg.disabledKey || 'gen:btn-disabled';
     else if (this._isPressed) key = this.cfg.pressedKey || 'gen:btn-pressed';
