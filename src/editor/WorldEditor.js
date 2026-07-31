@@ -189,7 +189,7 @@ export class WorldEditor extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(1100);
 
     // Tile count
-    this.tileCountText = this.add.text(10, this.scale.height - 24, '', {
+    this.tileCountText = this.add.text(16, this.scale.height - 24, '', {
       fontSize: '10px',
       color: '#aaaacc',
       fontFamily: 'monospace',
@@ -210,7 +210,7 @@ export class WorldEditor extends Phaser.Scene {
     this.statusBar.lineBetween(0, H - barH, W, H - barH);
     this.statusBar.setDepth(1000);
 
-    this.statusText = this.add.text(10, H - barH + 5, 'Hazır', {
+    this.statusText = this.add.text(16, H - barH + 5, 'Hazır', {
       fontSize: '9px',
       color: '#8888aa',
       fontFamily: 'monospace',

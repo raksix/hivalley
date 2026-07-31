@@ -11,7 +11,7 @@ const ITEM_SIZE = 36;
 const ITEM_GAP = 3;
 const SEARCH_H = 28;
 const TAB_H = 26;
-const GRID_PADDING = 6;
+const GRID_PADDING = 14;
 
 export class EditorPalette {
   /**
@@ -23,7 +23,7 @@ export class EditorPalette {
     this.selectedAsset = null;
     this.currentCategory = 'tiles';
     this.searchQuery = '';
-    this.container = scene.add.container(8, 40);
+    this.container = scene.add.container(16, 40);
     this.container.setDepth(900);
 
     this._createPanel();

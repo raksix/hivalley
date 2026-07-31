@@ -43,7 +43,7 @@ export class EditorToolbar {
       { key: 'rect', icon: '⬜', label: 'Rect', shortcut: 'R' },
     ];
 
-    let xPos = 14;
+    let xPos = 24;
     tools.forEach(tool => {
       const btn = this._createToolButton(xPos, 6, tool, BTN_W);
       this.buttons.push(btn);
