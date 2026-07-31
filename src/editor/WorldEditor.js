@@ -15,12 +15,10 @@ import {
   findAssetByTexture,
 } from './AssetRegistry.js';
 
-// Map sabitleri (GameScene ile aynı)
-const MAP_COLS = 30;
-const MAP_ROWS = 18;
+// Map sabitleri — başlangıç boyutu (editor'da dinamik olarak değiştirilebilir)
+const INITIAL_COLS = 30;
+const INITIAL_ROWS = 18;
 const TILE = 16;
-const MAP_W = MAP_COLS * TILE;
-const MAP_H = MAP_ROWS * TILE;
 
 // Maksimum undo sayısı
 const MAX_UNDO = 50;
@@ -60,6 +58,12 @@ export class WorldEditor extends Phaser.Scene {
     this.clipboard = null;
     this.clipboardOrigin = null;
 
+    // ─── DİNAMİK MAP BOYUTU ──────────────────────────
+    this.mapCols = INITIAL_COLS;
+    this.mapRows = INITIAL_ROWS;
+    this.mapW = this.mapCols * TILE;
+    this.mapH = this.mapRows * TILE;
+
     // Map data (2D array)
     this.mapData = this._createEmptyMap();
 
@@ -69,6 +73,10 @@ export class WorldEditor extends Phaser.Scene {
     // Selection state
     this.selectionRect = null;
     this.selectedTiles = [];
+
+    // Object selection state (rotation için)
+    this.selectedObject = null;
+    this._selectionHighlight = null;
 
     // ─── SETUP SCENE ───────────────────────────────
     this._setupCamera();
@@ -88,12 +96,12 @@ export class WorldEditor extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
 
   _setupCamera() {
-    const cx = MAP_W / 2;
-    const cy = MAP_H / 2;
+    const cx = this.mapW / 2;
+    const cy = this.mapH / 2;
 
     this.cameras.main.setBounds(
       -200, -200,
-      MAP_W + 400, MAP_H + 400
+      this.mapW + 400, this.mapH + 400
     );
     this.cameras.main.centerOn(cx, cy);
     this.cameras.main.setZoom(this.zoom);
@@ -117,11 +125,11 @@ export class WorldEditor extends Phaser.Scene {
     // Harita arka planı
     this.mapBg = this.add.graphics();
     this.mapBg.fillStyle(0x2a2a2a);
-    this.mapBg.fillRect(0, 0, MAP_W, MAP_H);
+    this.mapBg.fillRect(0, 0, this.mapW, this.mapH);
 
     // Dış sınır çizgisi
     this.mapBg.lineStyle(2, 0xff4444);
-    this.mapBg.strokeRect(0, 0, MAP_W, MAP_H);
+    this.mapBg.strokeRect(0, 0, this.mapW, this.mapH);
   }
 
   _createGridOverlay() {
@@ -138,23 +146,75 @@ export class WorldEditor extends Phaser.Scene {
     this.gridGraphics.lineStyle(0.5, 0xffffff, 0.15);
 
     // Dikey çizgiler
-    for (let x = 0; x <= MAP_W; x += TILE) {
-      this.gridGraphics.lineBetween(x, 0, x, MAP_H);
+    for (let x = 0; x <= this.mapW; x += TILE) {
+      this.gridGraphics.lineBetween(x, 0, x, this.mapH);
     }
 
     // Yatay çizgiler
-    for (let y = 0; y <= MAP_H; y += TILE) {
-      this.gridGraphics.lineBetween(0, y, MAP_W, y);
+    for (let y = 0; y <= this.mapH; y += TILE) {
+      this.gridGraphics.lineBetween(0, y, this.mapW, y);
     }
 
     // Her 5 tile'da bir koyu çizgi
     this.gridGraphics.lineStyle(1, 0xffffff, 0.25);
-    for (let x = 0; x <= MAP_W; x += TILE * 5) {
-      this.gridGraphics.lineBetween(x, 0, x, MAP_H);
+    for (let x = 0; x <= this.mapW; x += TILE * 5) {
+      this.gridGraphics.lineBetween(x, 0, x, this.mapH);
     }
-    for (let y = 0; y <= MAP_H; y += TILE * 5) {
-      this.gridGraphics.lineBetween(0, y, MAP_W, y);
+    for (let y = 0; y <= this.mapH; y += TILE * 5) {
+      this.gridGraphics.lineBetween(0, y, this.mapW, y);
     }
+  }
+
+  // ═══════════════════════════════════════════════════
+  // MAP RESIZE (DİNAMİK BOYUTLANDIRMA)
+  // ═══════════════════════════════════════════════════
+
+  _resizeMap(newCols, newRows) {
+    newCols = Math.max(1, Math.min(newCols, 500));
+    newRows = Math.max(1, Math.min(newRows, 500));
+
+    if (newCols === this.mapCols && newRows === this.mapRows) return;
+
+    // Mevcut tile verisini koruyarak yeni 2D array oluştur
+    const oldData = this.mapData;
+    const newData = [];
+
+    for (let y = 0; y < newRows; y++) {
+      newData[y] = [];
+      for (let x = 0; x < newCols; x++) {
+        if (oldData[y] && oldData[y][x]) {
+          newData[y][x] = oldData[y][x];
+        } else {
+          newData[y][x] = null;
+        }
+      }
+    }
+
+    // Boyutları güncelle
+    this.mapCols = newCols;
+    this.mapRows = newRows;
+    this.mapW = newCols * TILE;
+    this.mapH = newRows * TILE;
+
+    // Map data'yı güncelle
+    this.mapData = newData;
+
+    // Camera sınırlarını ve arka planı yeniden çiz
+    this.cameras.main.setBounds(-200, -200, this.mapW + 400, this.mapH + 400);
+    this.mapBg.clear();
+    this.mapBg.fillStyle(0x2a2a2a);
+    this.mapBg.fillRect(0, 0, this.mapW, this.mapH);
+    this.mapBg.lineStyle(2, 0xff4444);
+    this.mapBg.strokeRect(0, 0, this.mapW, this.mapH);
+
+    // Grid'i yeniden çiz
+    this._drawGrid();
+
+    // Tüm tile'ları yeniden render et
+    this._renderAllTiles();
+    this._updateTileCount();
+
+    this.events.emit('map-resized', { cols: newCols, rows: newRows });
   }
 
   _createCursor() {
@@ -224,8 +284,8 @@ export class WorldEditor extends Phaser.Scene {
     ].filter(Boolean);
 
     // Tile sprite'larını da ekle
-    for (let y = 0; y < MAP_ROWS; y++) {
-      for (let x = 0; x < MAP_COLS; x++) {
+    for (let y = 0; y < this.mapRows; y++) {
+      for (let x = 0; x < this.mapCols; x++) {
         const key = `tile_${x}_${y}`;
         const tile = this.children.getByName(key);
         if (tile) mapObjects.push(tile);
@@ -307,6 +367,9 @@ export class WorldEditor extends Phaser.Scene {
     k.on('keydown-F', () => this.toolbar.setActiveTool('fill'));
     k.on('keydown-R', () => this.toolbar.setActiveTool('rect'));
 
+    // Object rotation
+    k.on('keydown-T', () => this._rotateSelectedObject());
+
     // Undo/Redo
     k.on('keydown-Z', () => {
       if (k.addKey('CONTROL').isDown || k.addKey('META').isDown) {
@@ -354,8 +417,9 @@ export class WorldEditor extends Phaser.Scene {
     k.on('keydown-DELETE', () => this._deleteSelected());
     k.on('keydown-BACKSPACE', () => this._deleteSelected());
 
-    // Escape - seçimiptal
+    // Escape - seçim iptal
     k.on('keydown-ESC', () => {
+      this._clearObjectSelection();
       this.selectedTiles = [];
       this._clearSelection();
       this.palette.selectedAsset = null;
@@ -377,7 +441,7 @@ export class WorldEditor extends Phaser.Scene {
     const tileY = Math.floor(worldPoint.y / TILE);
 
     // Koordinat güncelle
-    if (tileX >= 0 && tileX < MAP_COLS && tileY >= 0 && tileY < MAP_ROWS) {
+    if (tileX >= 0 && tileX < this.mapCols && tileY >= 0 && tileY < this.mapRows) {
       this.coordText.setText(`X:${tileX} Y:${tileY} | PX:${Math.floor(worldPoint.x)},${Math.floor(worldPoint.y)}`);
     }
 
@@ -436,6 +500,15 @@ export class WorldEditor extends Phaser.Scene {
         break;
 
       case 'select':
+        // Object tıklama kontrolü
+        const clickedObj = this._findObjectAt(pointer.worldX, pointer.worldY);
+        if (clickedObj) {
+          this.selectedObject = clickedObj;
+          this._highlightObject(clickedObj);
+          this._showNotification('Nesne seçildi [T ile döndür]', 1200);
+          return;
+        }
+        this._clearObjectSelection();
         this._startSelection(worldPoint.x, worldPoint.y);
         break;
 
@@ -472,8 +545,15 @@ export class WorldEditor extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
 
   _paintTile(tileX, tileY) {
-    if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) return;
+    if (tileX < 0 || tileY < 0) return;
     if (!this.selectedAsset) return;
+
+    // Otomatik genişletme: harita sınırlarının dışına çıkıldıysa büyüt
+    if (tileX >= this.mapCols || tileY >= this.mapRows) {
+      const newCols = Math.max(this.mapCols, tileX + 1);
+      const newRows = Math.max(this.mapRows, tileY + 1);
+      this._resizeMap(newCols, newRows);
+    }
 
     const asset = this.selectedAsset;
 
@@ -496,7 +576,7 @@ export class WorldEditor extends Phaser.Scene {
   }
 
   _eraseTile(tileX, tileY) {
-    if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) return;
+    if (tileX < 0 || tileX >= this.mapCols || tileY < 0 || tileY >= this.mapRows) return;
 
     // Tile'ı temizle
     this.mapData[tileY][tileX] = null;
@@ -513,6 +593,9 @@ export class WorldEditor extends Phaser.Scene {
       const objTileX = Math.floor(obj.sprite.x / TILE);
       const objTileY = Math.floor(obj.sprite.y / TILE);
       if (objTileX === tileX && objTileY === tileY) {
+        if (this.selectedObject === obj) {
+          this._clearObjectSelection();
+        }
         obj.sprite.destroy();
         return false;
       }
@@ -551,8 +634,8 @@ export class WorldEditor extends Phaser.Scene {
 
   _renderAllTiles() {
     // Tüm tile render'larını temizle
-    for (let y = 0; y < MAP_ROWS; y++) {
-      for (let x = 0; x < MAP_COLS; x++) {
+    for (let y = 0; y < this.mapRows; y++) {
+      for (let x = 0; x < this.mapCols; x++) {
         const key = `tile_${x}_${y}`;
         const existing = this.children.getByName(key);
         if (existing) existing.destroy();
@@ -560,8 +643,8 @@ export class WorldEditor extends Phaser.Scene {
     }
 
     // Tüm tile'ları yeniden render et
-    for (let y = 0; y < MAP_ROWS; y++) {
-      for (let x = 0; x < MAP_COLS; x++) {
+    for (let y = 0; y < this.mapRows; y++) {
+      for (let x = 0; x < this.mapCols; x++) {
         if (this.mapData[y][x]) {
           this._renderTile(x, y);
         }
@@ -587,14 +670,72 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: asset.textureKey,
         tileX,
         tileY,
+        rotation: 0,
       });
     } catch (e) {
       console.warn(`Object placement hatası:`, e);
     }
   }
 
+  // ═══════════════════════════════════════════════════
+  // OBJECT SELECTION & ROTATION
+  // ═══════════════════════════════════════════════════
+
+  _findObjectAt(worldX, worldY) {
+    // Object'leri tersten iterate et (üstteki önce)
+    for (let i = this.objects.length - 1; i >= 0; i--) {
+      const obj = this.objects[i];
+      const s = obj.sprite;
+      const halfW = (s.displayWidth || 32) / 2;
+      const halfH = (s.displayHeight || 32) / 2;
+      if (worldX >= s.x - halfW && worldX <= s.x + halfW &&
+          worldY >= s.y - halfH && worldY <= s.y + halfH) {
+        return obj;
+      }
+    }
+    return null;
+  }
+
+  _highlightObject(obj) {
+    if (this._selectionHighlight) {
+      this._selectionHighlight.destroy();
+    }
+    const s = obj.sprite;
+    this._selectionHighlight = this.add.rectangle(
+      s.x, s.y, s.displayWidth + 6, s.displayHeight + 6
+    );
+    this._selectionHighlight.setStrokeStyle(2, 0x00ff88);
+    this._selectionHighlight.setFillStyle(0x00ff88, 0.15);
+    this._selectionHighlight.setDepth(4);
+    this._selectionHighlight.setAngle(obj.sprite.angle);
+    if (this.uiCamera) this.uiCamera.ignore(this._selectionHighlight);
+  }
+
+  _rotateSelectedObject() {
+    if (!this.selectedObject) {
+      this._showNotification('Önce bir nesne seç! [S tool + tıkla]', 1500);
+      return;
+    }
+    this._saveUndoState();
+    const obj = this.selectedObject;
+    obj.rotation = (obj.rotation + 1) % 4;
+    obj.sprite.setAngle(obj.rotation * 90);
+    if (this._selectionHighlight) {
+      this._selectionHighlight.setAngle(obj.rotation * 90);
+    }
+    this._showNotification(`Döndürüldü: ${obj.rotation * 90}°`, 1000);
+  }
+
+  _clearObjectSelection() {
+    this.selectedObject = null;
+    if (this._selectionHighlight) {
+      this._selectionHighlight.destroy();
+      this._selectionHighlight = null;
+    }
+  }
+
   _floodFill(startX, startY) {
-    if (startX < 0 || startX >= MAP_COLS || startY < 0 || startY >= MAP_ROWS) return;
+    if (startX < 0 || startX >= this.mapCols || startY < 0 || startY >= this.mapRows) return;
 
     const targetData = this.mapData[startY][startX];
     const fillData = {
@@ -609,7 +750,7 @@ export class WorldEditor extends Phaser.Scene {
     const queue = [[startX, startY]];
     const visited = new Set();
     let iterations = 0;
-    const maxIterations = MAP_COLS * MAP_ROWS;
+    const maxIterations = this.mapCols * this.mapRows;
 
     while (queue.length > 0 && iterations < maxIterations) {
       iterations++;
@@ -617,7 +758,7 @@ export class WorldEditor extends Phaser.Scene {
       const key = `${cx},${cy}`;
 
       if (visited.has(key)) continue;
-      if (cx < 0 || cx >= MAP_COLS || cy < 0 || cy >= MAP_ROWS) continue;
+      if (cx < 0 || cx >= this.mapCols || cy < 0 || cy >= this.mapRows) continue;
 
       const currentData = this.mapData[cy][cx];
       const sameType = (!currentData && !targetData) ||
@@ -645,7 +786,7 @@ export class WorldEditor extends Phaser.Scene {
   _drawCursor(tileX, tileY) {
     this.cursorGraphics.clear();
 
-    if (tileX < 0 || tileX >= MAP_COLS || tileY < 0 || tileY >= MAP_ROWS) {
+    if (tileX < 0 || tileX >= this.mapCols || tileY < 0 || tileY >= this.mapRows) {
       this.cursorPreview.setVisible(false);
       return;
     }
@@ -728,7 +869,7 @@ export class WorldEditor extends Phaser.Scene {
     this.selectedTiles = [];
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
-        if (x >= 0 && x < MAP_COLS && y >= 0 && y < MAP_ROWS) {
+        if (x >= 0 && x < this.mapCols && y >= 0 && y < this.mapRows) {
           this.selectedTiles.push({ x, y });
         }
       }
@@ -747,8 +888,8 @@ export class WorldEditor extends Phaser.Scene {
 
   _selectAll() {
     this.selectedTiles = [];
-    for (let y = 0; y < MAP_ROWS; y++) {
-      for (let x = 0; x < MAP_COLS; x++) {
+    for (let y = 0; y < this.mapRows; y++) {
+      for (let x = 0; x < this.mapCols; x++) {
         this.selectedTiles.push({ x, y });
       }
     }
@@ -780,7 +921,7 @@ export class WorldEditor extends Phaser.Scene {
 
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
-        if (x >= 0 && x < MAP_COLS && y >= 0 && y < MAP_ROWS) {
+        if (x >= 0 && x < this.mapCols && y >= 0 && y < this.mapRows) {
           this._paintTile(x, y);
         }
       }
@@ -803,6 +944,7 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: obj.textureKey,
         tileX: obj.tileX,
         tileY: obj.tileY,
+        rotation: obj.rotation || 0,
       })),
     };
 
@@ -829,6 +971,7 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: obj.textureKey,
         tileX: obj.tileX,
         tileY: obj.tileY,
+        rotation: obj.rotation || 0,
       })),
     };
     this.redoStack.push(currentState);
@@ -838,12 +981,18 @@ export class WorldEditor extends Phaser.Scene {
     this.mapData = prevState.mapData;
 
     // Object'leri temizle ve yeniden oluştur
+    this._clearObjectSelection();
     this.objects.forEach(obj => obj.sprite.destroy());
     this.objects = [];
     prevState.objects.forEach(objData => {
       const asset = findAssetByTexture(objData.textureKey);
       if (asset) {
         this._placeObject(objData.tileX, objData.tileY, asset);
+        if (objData.rotation) {
+          const lastObj = this.objects[this.objects.length - 1];
+          lastObj.rotation = objData.rotation;
+          lastObj.sprite.setAngle(objData.rotation * 90);
+        }
       }
     });
 
@@ -866,6 +1015,7 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: obj.textureKey,
         tileX: obj.tileX,
         tileY: obj.tileY,
+        rotation: obj.rotation || 0,
       })),
     };
     this.undoStack.push(currentState);
@@ -874,12 +1024,18 @@ export class WorldEditor extends Phaser.Scene {
     const nextState = this.redoStack.pop();
     this.mapData = nextState.mapData;
 
+    this._clearObjectSelection();
     this.objects.forEach(obj => obj.sprite.destroy());
     this.objects = [];
     nextState.objects.forEach(objData => {
       const asset = findAssetByTexture(objData.textureKey);
       if (asset) {
         this._placeObject(objData.tileX, objData.tileY, asset);
+        if (objData.rotation) {
+          const lastObj = this.objects[this.objects.length - 1];
+          lastObj.rotation = objData.rotation;
+          lastObj.sprite.setAngle(objData.rotation * 90);
+        }
       }
     });
 
@@ -934,7 +1090,7 @@ export class WorldEditor extends Phaser.Scene {
     this.clipboard.tiles.forEach(tile => {
       const x = startX + tile.relX;
       const y = startY + tile.relY;
-      if (x >= 0 && x < MAP_COLS && y >= 0 && y < MAP_ROWS && tile.data) {
+      if (x >= 0 && x < this.mapCols && y >= 0 && y < this.mapRows && tile.data) {
         this.mapData[y][x] = { ...tile.data };
         this._renderTile(x, y);
       }
@@ -965,8 +1121,8 @@ export class WorldEditor extends Phaser.Scene {
     const mapExport = {
       version: 1,
       name: 'HiValley Map',
-      cols: MAP_COLS,
-      rows: MAP_ROWS,
+      cols: this.mapCols,
+      rows: this.mapRows,
       tileSize: TILE,
       timestamp: new Date().toISOString(),
       tiles: this.mapData,
@@ -977,6 +1133,7 @@ export class WorldEditor extends Phaser.Scene {
         y: obj.sprite.y,
         tileX: obj.tileX,
         tileY: obj.tileY,
+        rotation: obj.rotation || 0,
       })),
     };
 
@@ -1038,20 +1195,33 @@ export class WorldEditor extends Phaser.Scene {
   }
 
   _importMapData(data) {
+    // Boyut bilgisi varsa haritayı yeniden boyutlandır
+    const newCols = data.cols || INITIAL_COLS;
+    const newRows = data.rows || INITIAL_ROWS;
+
+    // Object'leri temizle
+    this.objects.forEach(obj => obj.sprite.destroy());
+    this.objects = [];
+
+    // Haritayı yeniden boyutlandır (mevcut tile verisi korunarak)
+    this._resizeMap(newCols, newRows);
+
     // Map data'yı yükle
     if (data.tiles && Array.isArray(data.tiles)) {
       this.mapData = data.tiles;
     }
 
-    // Object'leri temizle ve yeniden oluştur
-    this.objects.forEach(obj => obj.sprite.destroy());
-    this.objects = [];
-
+    // Object'leri yeniden oluştur
     if (data.objects && Array.isArray(data.objects)) {
       data.objects.forEach(objData => {
         const asset = findAssetByTexture(objData.textureKey);
         if (asset) {
           this._placeObject(objData.tileX, objData.tileY, asset);
+          if (objData.rotation) {
+            const lastObj = this.objects[this.objects.length - 1];
+            lastObj.rotation = objData.rotation;
+            lastObj.sprite.setAngle(objData.rotation * 90);
+          }
         }
       });
     }
@@ -1064,8 +1234,8 @@ export class WorldEditor extends Phaser.Scene {
     const mapExport = {
       version: 1,
       name: 'HiValley Map',
-      cols: MAP_COLS,
-      rows: MAP_ROWS,
+      cols: this.mapCols,
+      rows: this.mapRows,
       tileSize: TILE,
       timestamp: new Date().toISOString(),
       tiles: this.mapData,
@@ -1076,6 +1246,7 @@ export class WorldEditor extends Phaser.Scene {
         y: obj.sprite.y,
         tileX: obj.tileX,
         tileY: obj.tileY,
+        rotation: obj.rotation || 0,
       })),
     };
 
@@ -1123,6 +1294,14 @@ export class WorldEditor extends Phaser.Scene {
     this.events.on('load-map', () => this._loadMap());
     this.events.on('export-map', () => this._exportMap());
 
+    // Harita boyutu değiştirme (toolbar'dan doğrudan gelir)
+    this.events.on('resize-map', (data) => {
+      if (data && typeof data.cols === 'number' && typeof data.rows === 'number') {
+        this._resizeMap(data.cols, data.rows);
+        this._showNotification(`Harita boyutu: ${this.mapCols}x${this.mapRows}`, 2000);
+      }
+    });
+
     // Toolbar action events (yeni compact toolbar'dan gelir)
     this.events.on('toolbar-action', (action) => {
       switch (action) {
@@ -1140,6 +1319,12 @@ export class WorldEditor extends Phaser.Scene {
           break;
         case 'zoom-in': this._setZoom(this.zoom + 0.3); break;
         case 'zoom-out': this._setZoom(this.zoom - 0.3); break;
+        case 'resize-map':
+          if (action.data && typeof action.data.cols === 'number' && typeof action.data.rows === 'number') {
+            this._resizeMap(action.data.cols, action.data.rows);
+            this._showNotification('Harita boyutu: ' + this.mapCols + 'x' + this.mapRows, 2000);
+          }
+          break;
       }
     });
   }
@@ -1150,9 +1335,9 @@ export class WorldEditor extends Phaser.Scene {
 
   _createEmptyMap() {
     const map = [];
-    for (let y = 0; y < MAP_ROWS; y++) {
+    for (let y = 0; y < this.mapRows; y++) {
       map[y] = [];
-      for (let x = 0; x < MAP_COLS; x++) {
+      for (let x = 0; x < this.mapCols; x++) {
         map[y][x] = null;
       }
     }
@@ -1167,12 +1352,12 @@ export class WorldEditor extends Phaser.Scene {
 
   _updateTileCount() {
     let count = 0;
-    for (let y = 0; y < MAP_ROWS; y++) {
-      for (let x = 0; x < MAP_COLS; x++) {
+    for (let y = 0; y < this.mapRows; y++) {
+      for (let x = 0; x < this.mapCols; x++) {
         if (this.mapData[y][x]) count++;
       }
     }
-    this.tileCountText.setText(`Tiles: ${count}/${MAP_COLS * MAP_ROWS}`);
+    this.tileCountText.setText(`Tiles: ${count}/${this.mapCols * this.mapRows}`);
   }
 
   _showNotification(message, duration = 2000) {
