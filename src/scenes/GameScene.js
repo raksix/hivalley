@@ -448,12 +448,9 @@ export class GameScene extends Phaser.Scene {
     // Show interaction hint when near objects
     let nearAny = false;
     if (this.editorObjects && this.editorObjects.length > 0) {
-      for (const obj of this.editorObjects) {
-        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, obj.x, obj.y) < 40) {
-          nearAny = true;
-          break;
-        }
-      }
+      nearAny = this.editorObjects.some(obj =>
+        Phaser.Math.Distance.Between(this.player.x, this.player.y, obj.x, obj.y) < 40
+      );
     } else {
       if (this.chest) nearAny = nearAny || Phaser.Math.Distance.Between(this.player.x, this.player.y, this.chest.x, this.chest.y) < 40;
       if (this.house) nearAny = nearAny || Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50;
