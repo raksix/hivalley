@@ -33,9 +33,18 @@ export class WorldEditor extends Phaser.Scene {
     // Editor için canvas'ı tam ekran yap, kapatınca geri küçült
     this._originalWidth = this.scale.width;
     this._originalHeight = this.scale.height;
-    const w = Math.max(window.innerWidth, 960);
-    const h = Math.max(window.innerHeight, 600);
-    this.scale.resize(w, h);
+    this._prevScaleMode = this.scale.scaleMode;
+    this._prevAutoCenter = this.scale.autoCenter;
+
+    // RESIZE moduna geç — FIT modda canvas CSS tarafından küçültülüyor,
+    // bu da palette'nin görünmemesine neden oluyor
+    this.scale.setGameSize(Math.max(window.innerWidth, 960), Math.max(window.innerHeight, 600));
+    this.scale.mode = Phaser.Scale.RESIZE;
+    this.scale.autoCenter = Phaser.Scale.NO_CENTER;
+    this.scale.refresh();
+
+    const w = this.scale.width;
+    const h = this.scale.height;
 
     // Tam canvas arka planı — diğer sahnelerin görünmemesi için
     this.cameras.main.setBackgroundColor('#0e0e1a');
@@ -1410,9 +1419,17 @@ export class WorldEditor extends Phaser.Scene {
 
   // Sahne kapanınca canvas'ı eski boyutuna geri al
   shutdown() {
+    // Scale modunu geri yükle
+    if (this._prevScaleMode != null) {
+      this.scale.mode = this._prevScaleMode;
+    }
+    if (this._prevAutoCenter != null) {
+      this.scale.autoCenter = this._prevAutoCenter;
+    }
     if (this._originalWidth && this._originalHeight) {
       this.scale.resize(this._originalWidth, this._originalHeight);
     }
+    this.scale.refresh();
     // CSS'i geri yükle
     const gameEl = document.getElementById('game');
     if (gameEl && this._prevGameStyle != null) {

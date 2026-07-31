@@ -73,15 +73,17 @@ export class GameScene extends Phaser.Scene {
     const player = this.save?.player ?? PlayerState.get();
     this.playerData = player;
 
-    // Editor'dan kaydedilen harita boyutunu oku
+    // Editor'dan kaydedilen haritayı oku
     let mapCols = DEFAULT_MAP_COLS;
     let mapRows = DEFAULT_MAP_ROWS;
+    let editorMapData = null;
     try {
-      const saved = localStorage.getItem('hivalley-editor-map');
+      const saved = localStorage.getItem('hivalley:editor:lastMap');
       if (saved) {
         const data = JSON.parse(saved);
         if (data.cols) mapCols = data.cols;
         if (data.rows) mapRows = data.rows;
+        editorMapData = data;
       }
     } catch (e) { /* use defaults */ }
     this.mapCols = mapCols;
@@ -93,7 +95,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#4a8c3f');
 
     // --- Tile map ---
-    this.buildMap();
+    this.buildMap(editorMapData);
 
     // --- Player character ---
     this.buildPlayer();
@@ -145,81 +147,113 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ===================== MAP =====================
-  buildMap() {
+  buildMap(editorData) {
     this.mapContainer = this.add.container(0, 0);
+    this.editorObjects = [];
 
-    // Helper: place a Farm RPG tileset tile
-    const placeTile = (col, row, frame, depth = 0) => {
+    // Helper: place a tile at grid position
+    const placeTile = (col, row, textureKey, frame, depth = 0) => {
       const x = col * TILE + TILE / 2;
       const y = row * TILE + TILE / 2;
-      const img = this.add.image(x, y, 'farm:tileset', frame)
-        .setOrigin(0.5, 0.5)
-        .setDepth(depth);
-      this.mapContainer.add(img);
-      return img;
+      if (this.textures.exists(textureKey)) {
+        const img = this.add.image(x, y, textureKey, frame)
+          .setOrigin(0.5, 0.5)
+          .setDepth(depth);
+        this.mapContainer.add(img);
+        return img;
+      }
+      return null;
     };
 
-    // Seeded PRNG for subtle grass variation
-    let seed = 12345;
-    const rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed; };
+    if (editorData && editorData.tiles && Array.isArray(editorData.tiles)) {
+      // ─── EDITOR MAP ──────────────────────────────
+      const tileRows = editorData.tiles;
 
-    // ---- 1. Grass ground (entire map) ----
-    // Uses ONLY solid green frames (33 and 225) to avoid maze-like patterns.
-    // ~90% GRASS (frame 33), ~10% GRASS_ALT (frame 225) for subtle variation.
-    for (let r = 0; r < this.mapRows; r++) {
-      for (let c = 0; c < this.mapCols; c++) {
-        const v = rng();
-        const frame = (v % 10 === 0) ? GRASS_ALT : GRASS;
-        placeTile(c, r, frame, 0);
+      for (let row = 0; row < this.mapRows && row < tileRows.length; row++) {
+        const tileRow = tileRows[row];
+        if (!tileRow || !Array.isArray(tileRow)) continue;
+        for (let col = 0; col < this.mapCols && col < tileRow.length; col++) {
+          const tileData = tileRow[col];
+          if (tileData && tileData.textureKey) {
+            placeTile(col, row, tileData.textureKey, tileData.frame || 0, 0);
+          }
+        }
       }
-    }
 
-    // ---- 2. Dirt path (row 9, cols 4–25) ----
-    for (let c = 4; c <= 25; c++) {
-      placeTile(c, 9, PATH_A, 0);
-    }
-
-    // ---- 3. Tilled soil (rows 5–7, two farm plots) ----
-    const tilledFrames = [TILLED_A, TILLED_B, TILLED_C];
-    for (let r = 5; r <= 7; r++) {
-      let idx = 0;
-      for (let c = 6; c <= 12; c++) {
-        placeTile(c, r, tilledFrames[idx % tilledFrames.length], 0);
-        idx++;
+      // Object'leri yerleştir
+      if (editorData.objects && Array.isArray(editorData.objects)) {
+        editorData.objects.forEach(objData => {
+          if (!objData.textureKey) return;
+          try {
+            const obj = this.add.image(objData.x, objData.y, objData.textureKey, objData.frame || 0)
+              .setOrigin(0.5, 1)
+              .setDepth(1);
+            if (objData.rotation) {
+              obj.setAngle(objData.rotation * 90);
+            }
+            this.mapContainer.add(obj);
+            this.editorObjects.push(obj);
+          } catch (err) {
+            console.warn('Object yerleştirme hatası:', objData.textureKey, err);
+          }
+        });
       }
-      for (let c = 17; c <= 23; c++) {
-        placeTile(c, r, tilledFrames[idx % tilledFrames.length], 0);
-        idx++;
+    } else {
+      // ─── FALLBACK: HARDCODED MAP ──────────────────
+      let seed = 12345;
+      const rng = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed; };
+
+      // Grass ground
+      for (let r = 0; r < this.mapRows; r++) {
+        for (let c = 0; c < this.mapCols; c++) {
+          const v = rng();
+          const frame = (v % 10 === 0) ? GRASS_ALT : GRASS;
+          placeTile(c, r, 'farm:tileset', frame, 0);
+        }
       }
-    }
 
-    // ---- 4. Water pond (rows 13–16, cols 24–28) ----
-    // Farm RPG tileset has no blue tiles. We tint green tiles blue to
-    // represent water visually.
-    for (let r = 13; r <= 16; r++) {
-      for (let c = 24; c <= 28; c++) {
-        const x = c * TILE + TILE / 2;
-        const y = r * TILE + TILE / 2;
-        const img = this.add.image(x, y, 'farm:tileset', GRASS)
-          .setOrigin(0.5, 0.5)
-          .setDepth(0)
-          .setTint(0x3388cc);
-        this.mapContainer.add(img);
+      // Dirt path (row 9, cols 4–25)
+      for (let c = 4; c <= 25; c++) {
+        placeTile(c, 9, 'farm:tileset', PATH_A, 0);
       }
+
+      // Tilled soil (rows 5–7, two farm plots)
+      const tilledFrames = [TILLED_A, TILLED_B, TILLED_C];
+      for (let r = 5; r <= 7; r++) {
+        let idx = 0;
+        for (let c = 6; c <= 12; c++) {
+          placeTile(c, r, 'farm:tileset', tilledFrames[idx % tilledFrames.length], 0);
+          idx++;
+        }
+        for (let c = 17; c <= 23; c++) {
+          placeTile(c, r, 'farm:tileset', tilledFrames[idx % tilledFrames.length], 0);
+          idx++;
+        }
+      }
+
+      // Water pond (rows 13–16, cols 24–28)
+      for (let r = 13; r <= 16; r++) {
+        for (let c = 24; c <= 28; c++) {
+          const x = c * TILE + TILE / 2;
+          const y = r * TILE + TILE / 2;
+          const img = this.add.image(x, y, 'farm:tileset', GRASS)
+            .setOrigin(0.5, 0.5)
+            .setDepth(0)
+            .setTint(0x3388cc);
+          this.mapContainer.add(img);
+        }
+      }
+
+      // Farm objects
+      this.house = this.add.image(400, 32, 'farm:house').setOrigin(0.5, 1).setDepth(1);
+      this.mapContainer.add(this.house);
+      this.tree = this.add.image(60, 24, 'farm:tree').setOrigin(0.5, 1).setDepth(1);
+      this.mapContainer.add(this.tree);
+      this.fence = this.add.image(160, 70, 'farm:fence').setOrigin(0.5, 1).setDepth(1);
+      this.mapContainer.add(this.fence);
+      this.chest = this.add.image(360, 55, 'farm:chest').setOrigin(0.5, 1).setDepth(2);
+      this.mapContainer.add(this.chest);
     }
-
-    // ---- 5. Farm objects ----
-    this.house = this.add.image(400, 32, 'farm:house').setOrigin(0.5, 1).setDepth(1);
-    this.mapContainer.add(this.house);
-
-    this.tree = this.add.image(60, 24, 'farm:tree').setOrigin(0.5, 1).setDepth(1);
-    this.mapContainer.add(this.tree);
-
-    this.fence = this.add.image(160, 70, 'farm:fence').setOrigin(0.5, 1).setDepth(1);
-    this.mapContainer.add(this.fence);
-
-    this.chest = this.add.image(360, 55, 'farm:chest').setOrigin(0.5, 1).setDepth(2);
-    this.mapContainer.add(this.chest);
   }
 
   // ===================== PLAYER =====================
@@ -294,14 +328,25 @@ export class GameScene extends Phaser.Scene {
 
   // ===================== INTERACTION =====================
   handleInteract() {
-    // Check proximity to interactable objects
-    if (this.chest && Phaser.Math.Distance.Between(
-      this.player.x, this.player.y, this.chest.x, this.chest.y) < 40) {
+    const px = this.player.x;
+    const py = this.player.y;
+
+    // Editor object'lerini kontrol et
+    if (this.editorObjects && this.editorObjects.length > 0) {
+      for (const obj of this.editorObjects) {
+        if (Phaser.Math.Distance.Between(px, py, obj.x, obj.y) < 40) {
+          this.showMessage('You found something interesting!');
+          return;
+        }
+      }
+    }
+
+    // Fallback objeleri kontrol et
+    if (this.chest && Phaser.Math.Distance.Between(px, py, this.chest.x, this.chest.y) < 40) {
       this.showMessage('You found a rusty chest! It\'s locked...');
       return;
     }
-    if (this.house && Phaser.Math.Distance.Between(
-      this.player.x, this.player.y, this.house.x, this.house.y) < 50) {
+    if (this.house && Phaser.Math.Distance.Between(px, py, this.house.x, this.house.y) < 50) {
       this.showMessage('The farmhouse. It looks cozy inside.');
       return;
     }
@@ -401,9 +446,18 @@ export class GameScene extends Phaser.Scene {
     this.nameTag.setPosition(this.player.x, this.player.y - 20);
 
     // Show interaction hint when near objects
-    const nearAny =
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.chest.x, this.chest.y) < 40 ||
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50;
+    let nearAny = false;
+    if (this.editorObjects && this.editorObjects.length > 0) {
+      for (const obj of this.editorObjects) {
+        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, obj.x, obj.y) < 40) {
+          nearAny = true;
+          break;
+        }
+      }
+    } else {
+      if (this.chest) nearAny = nearAny || Phaser.Math.Distance.Between(this.player.x, this.player.y, this.chest.x, this.chest.y) < 40;
+      if (this.house) nearAny = nearAny || Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50;
+    }
     this.interactHint.setAlpha(nearAny ? 1 : 0);
   }
 }
