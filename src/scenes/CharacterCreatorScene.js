@@ -541,7 +541,13 @@ class CharacterPreview {
     this.sprite.setScale(5);
 
     // Start the idle-down animation so the character breathes/animates.
-    this.sprite.play('farm:idle-down');
+    // Wrap in try-catch because the animation manager may not be ready yet
+    // if the scene starts before PreloadScene finishes creating animations.
+    try {
+      this.sprite.play('farm:idle-down');
+    } catch (_e) {
+      // anims not ready — fine, it's a preview-only visual
+    }
 
     // Gender label — added directly to scene (not inside a container)
     this.genderLabel = scene.add.text(x, y + 10, '', {
@@ -559,12 +565,6 @@ class CharacterPreview {
 
     // Show gender
     this.genderLabel.setText(cap(draft.gender));
-
-    // Make sure the idle animation keeps playing (it may be cleared if a
-    // frame was set manually elsewhere).
-    if (!this.sprite.anims.isPlaying || this.sprite.anims.currentAnim?.key !== 'farm:idle-down') {
-      this.sprite.play('farm:idle-down', true);
-    }
   }
 }
 
