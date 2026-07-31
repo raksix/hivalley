@@ -40,6 +40,16 @@ export class WorldEditor extends Phaser.Scene {
     // Tam canvas arka planı — diğer sahnelerin görünmemesi için
     this.cameras.main.setBackgroundColor('#0e0e1a');
 
+    // Fare imlecini göster (CSS cursor: none'ı override et)
+    this.input.setDefaultCursor('default');
+
+    // CSS'i fullscreen yap — flex centering'i kaldır, canvas'ı tam ekran yap
+    const gameEl = document.getElementById('game');
+    if (gameEl) {
+      this._prevGameStyle = gameEl.style.cssText;
+      gameEl.style.cssText = 'width:100vw;height:100vh;overflow:hidden;position:relative;';
+    }
+
     // ─── STATE ─────────────────────────────────────
     this.currentTool = 'paint';
     this.selectedAsset = null;
@@ -1397,6 +1407,11 @@ export class WorldEditor extends Phaser.Scene {
   shutdown() {
     if (this._originalWidth && this._originalHeight) {
       this.scale.resize(this._originalWidth, this._originalHeight);
+    }
+    // CSS'i geri yükle
+    const gameEl = document.getElementById('game');
+    if (gameEl && this._prevGameStyle != null) {
+      gameEl.style.cssText = this._prevGameStyle;
     }
     // Toolbar ve palette temizle
     if (this.toolbar) this.toolbar.destroy();
