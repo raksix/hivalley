@@ -14,7 +14,7 @@ const ASSETS = {
   // Character spritesheets (16x32 tiles — half-width, full body)
   // Idle.png: 128x96 → 8 cols x 3 rows. Rows: down, left, right.
   // Walk.png: 192x96 → 12 cols x 3 rows. Rows: down, left, right.
-  charIdle:   { key: 'farm:char-idle',    url: 'assets/farm-rpg/Character/Idle.png', frameWidth: 16, frameHeight: 32 },
+  charIdle:   { key: 'farm:char-idle',    url: 'assets/farm-rpg/Character/Idle.png', frameWidth: 32, frameHeight: 32 },
   charWalk:   { key: 'farm:char-walk',    url: 'assets/farm-rpg/Character/Walk.png', frameWidth: 16, frameHeight: 32 },
 
   // Tileset (16x16 tiles)
