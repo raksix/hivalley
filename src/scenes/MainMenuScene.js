@@ -261,7 +261,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setScale(3)
       .setDepth(9999);
     this.input.on('pointermove', (p) => {
-      this.cursorImg.setPosition(p.x + 12, p.y + 4);
+      this.cursorImg.setPosition(p.x + 120, p.y + 50);
     });
     this.input.on('pointerdown', () => {
       this.cursorImg.setTexture('gen:btn-hover');
