@@ -277,44 +277,7 @@ export class GameScene extends Phaser.Scene {
 
     // (No grass detail decorations — just clean grass ground)
 
-    // ---- New decorations (decorative objects) ----
-    // Bush (avoiding overlap with tilled plots, fences, and house/shrubs area)
-    this.bush1 = placeStand(25, 5, K.BUSH_GREEN_A);
-    this.bush2 = placeStand(27, 5, K.BUSH_FLOWER);
-    this.bush3 = placeStand(3, 11, K.BUSH_BERRY);
-    this.bush4 = placeStand(28, 12, K.BUSH_GREEN_B);
-
-    // Crate (next to house)
-    this.crate1 = placeStand(22, 10, K.CRATE_WOOD);
-    this.crate2 = placeStand(5, 10, K.BARREL);
-
-    // Barrel near path
-    this.barrel1 = placeStand(13, 10, K.BARREL_LIE);
-
-    // Lantern (decorative lighting) near house
-    this.lantern1 = placeStand(21, 8, K.LANTERN);
-
-    // Well (between farm plots, on the path)
-    this.well1 = placeStand(14, 8, K.WELL);
-
-    // Sapling pine (top area, avoiding the wood border)
-    this.pineYoung = placeStand(5, 3, K.TREE_PINE);
-
-    // Scarecrow in middle of east tilled plot
-    this.scarecrow = placeStand(20, 6, K.SCARECROW);
-
-    // Flower pot near house
-    this.flowerpot = placeStand(23, 9, K.FLOWER_POT);
-
-    // ---- Fence segments along the tilled plots ----
-    // North fence of the first plot (row 4, cols 6–12)
-    for (let c = 6; c <= 12; c++) {
-      place(c, 4, K.FENCE_H, KENNEY_DECOR.STAND);
-    }
-    // South fence of the second plot (row 8, cols 17–23)
-    for (let c = 17; c <= 23; c++) {
-      place(c, 8, K.FENCE_H, KENNEY_DECOR.STAND);
-    }
+    // (No decorative objects — just clean ground layout)
   }
 
   // ===================== PLAYER =====================
@@ -515,13 +478,10 @@ export class GameScene extends Phaser.Scene {
     // Update name tag position
     this.nameTag.setPosition(this.player.x, this.player.y - 20);
 
-    // Show interaction hint when near objects (base objects + Kenney additions)
+    // Show interaction hint when near objects
     const nearAny =
       Phaser.Math.Distance.Between(this.player.x, this.player.y, this.chest.x, this.chest.y) < 40 ||
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50 ||
-      (this.crate1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.crate1.x, this.crate1.y) < 32) ||
-      (this.well1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.well1.x, this.well1.y) < 32) ||
-      (this.lantern1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.lantern1.x, this.lantern1.y) < 32);
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50;
     this.interactHint.setAlpha(nearAny ? 1 : 0);
   }
 }
