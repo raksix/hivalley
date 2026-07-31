@@ -32,10 +32,12 @@ export class WorldEditor extends Phaser.Scene {
 
   create() {
     // ─── CANVAS RESIZE ──────────────────────────────
-    // Editor için canvas'ı büyüt, kapatınca geri küçült
+    // Editor için canvas'ı tam ekran yap, kapatınca geri küçült
     this._originalWidth = this.scale.width;
     this._originalHeight = this.scale.height;
-    this.scale.resize(1280, 720);
+    const w = Math.max(window.innerWidth, 960);
+    const h = Math.max(window.innerHeight, 600);
+    this.scale.resize(w, h);
 
     // Tam canvas arka planı — diğer sahnelerin görünmemesi için
     this.cameras.main.setBackgroundColor('#0e0e1a');
@@ -172,30 +174,73 @@ export class WorldEditor extends Phaser.Scene {
   // ═══════════════════════════════════════════════════
 
   _setupUI() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    // ─── AYRI UI CAMERA ──────────────────────────────
+    // Ana camera'dan bağımsız, zoom/scroll'dan etkilenmeyen UI camera'sı
+    this.uiCamera = this.cameras.add(0, 0, W, H);
+    this.uiCamera.setZoom(1);
+    this.uiCamera.setBackgroundColor('rgba(0,0,0,0)');
+
     // Toolbar
     this.toolbar = new EditorToolbar(this);
+    if (this.toolbar.container) this.toolbar.container.setScrollFactor(0);
 
     // Palette panel
     this.palette = new EditorPalette(this);
+    if (this.palette.container) this.palette.container.setScrollFactor(0);
 
     // Status bar (alt)
     this._createStatusBar();
+    if (this.statusBar) this.statusBar.setScrollFactor(0);
+    if (this.statusText) this.statusText.setScrollFactor(0);
 
     // Koordinat göstergesi
-    this.coordText = this.add.text(this.scale.width - 10, this.scale.height - 24, '', {
+    this.coordText = this.add.text(W - 10, H - 24, '', {
       fontSize: '10px',
       color: '#aaaacc',
       fontFamily: 'monospace',
-    }).setOrigin(1, 0).setDepth(1100);
+    }).setOrigin(1, 0).setDepth(1100).setScrollFactor(0);
 
     // Tile count
-    this.tileCountText = this.add.text(16, this.scale.height - 24, '', {
+    this.tileCountText = this.add.text(16, H - 24, '', {
       fontSize: '10px',
       color: '#aaaacc',
       fontFamily: 'monospace',
-    }).setDepth(1100);
+    }).setDepth(1100).setScrollFactor(0);
 
     this._updateTileCount();
+
+    // UI camera sadece UI elementlerini render etsin, harita objelerini ignore etsin
+    this._setupUICamera();
+  }
+
+  _setupUICamera() {
+    // Ana camera'daki harita objelerini topla
+    const mapObjects = [
+      this.mapBg, this.gridGraphics, this.cursorGraphics, this.cursorPreview,
+      this.selectionRect, ...this.objects.map(o => o.sprite),
+    ].filter(Boolean);
+
+    // Tile sprite'larını da ekle
+    for (let y = 0; y < MAP_ROWS; y++) {
+      for (let x = 0; x < MAP_COLS; x++) {
+        const key = `tile_${x}_${y}`;
+        const tile = this.children.getByName(key);
+        if (tile) mapObjects.push(tile);
+      }
+    }
+
+    // UI camera harita objelerini ignore etsin
+    this.uiCamera.ignore(mapObjects);
+
+    // Ana camera UI objelerini ignore etsin
+    const uiObjects = [
+      this.toolbar?.container, this.palette?.container,
+      this.statusBar, this.statusText, this.coordText, this.tileCountText,
+    ].filter(Boolean);
+    this.cameras.main.ignore(uiObjects);
   }
 
   _createStatusBar() {
@@ -497,6 +542,8 @@ export class WorldEditor extends Phaser.Scene {
       sprite.setName(key);
       sprite.setDisplaySize(TILE, TILE);
       sprite.setDepth(1); // Grid'in altında
+      // UI camera'dan gizle
+      if (this.uiCamera) this.uiCamera.ignore(sprite);
     } catch (e) {
       console.warn(`Tile render hatası (${tileX},${tileY}):`, e);
     }
@@ -530,6 +577,8 @@ export class WorldEditor extends Phaser.Scene {
       const sprite = this.add.image(x, y, asset.textureKey, 0);
       sprite.setDepth(5);
       sprite.setDisplaySize(asset.width || 32, asset.height || 32);
+      // UI camera'dan gizle
+      if (this.uiCamera) this.uiCamera.ignore(sprite);
 
       // Object listesine ekle
       this.objects.push({
@@ -643,6 +692,8 @@ export class WorldEditor extends Phaser.Scene {
     this.selectionStart = { x: worldX, y: worldY };
     this.selectionRect = this.add.graphics();
     this.selectionRect.setDepth(50);
+    // UI camera'dan gizle
+    if (this.uiCamera) this.uiCamera.ignore(this.selectionRect);
   }
 
   _updateSelectionRect(worldX, worldY) {
@@ -1134,6 +1185,7 @@ export class WorldEditor extends Phaser.Scene {
     bg.lineStyle(1, 0x4a4a8e);
     bg.strokeRoundedRect(W / 2 - 150, H / 2 - 20, 300, 40, 8);
     bg.setDepth(2000);
+    bg.setScrollFactor(0);
 
     const text = this.add.text(W / 2, H / 2, message, {
       fontSize: '11px',
@@ -1141,6 +1193,7 @@ export class WorldEditor extends Phaser.Scene {
       fontFamily: 'monospace',
       align: 'center',
     }).setOrigin(0.5).setDepth(2001);
+    text.setScrollFactor(0);
 
     this.time.delayedCall(duration, () => {
       bg.destroy();
