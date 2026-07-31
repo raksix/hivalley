@@ -199,11 +199,7 @@ export class GameScene extends Phaser.Scene {
     const placeStand = (col, row, frame) => place(col, row, frame, KENNEY_DECOR.STAND);
 
     // ---- Kenney grass ground layer (base layer under everything) ----
-    // Use Kenney grass variations across the entire map (except path, tilled, water)
-    const grassVariations = [
-      K.GRASS_LIGHT, K.GRASS_DARK, K.GRASS_GREEN_A, K.GRASS_GREEN_B,
-      K.GRASS_GREEN_C, K.GRASS_GREEN_D, K.GRASS_SPARSE
-    ];
+    // Primarily GRASS_LIGHT for a clean, cohesive look — only ~8% get a subtle variant.
     let grassSeed = 42;
     for (let r = 0; r < MAP_ROWS; r++) {
       for (let c = 0; c < MAP_COLS; c++) {
@@ -215,8 +211,9 @@ export class GameScene extends Phaser.Scene {
 
         if (isPath || isTilled || isWater || isWoodBorder) continue;
 
+        // ~92% light grass, ~8% slightly darker variant — subtle, not busy
         grassSeed = (grassSeed * 1103515245 + 12345) & 0x7fffffff;
-        const frame = grassVariations[grassSeed % grassVariations.length];
+        const frame = (grassSeed % 12 < 1) ? K.GRASS_GREEN_A : K.GRASS_LIGHT;
         place(c, r, frame);
       }
     }
@@ -291,10 +288,8 @@ export class GameScene extends Phaser.Scene {
     ]);
 
     const decorFlowers = [
-      K.GRASS_FLOWER_A, K.GRASS_FLOWER_B, K.GRASS_FLOWER_C,
       K.GRASS_FLOWER_RED, K.GRASS_FLOWER_YELLOW, K.GRASS_FLOWER_BLUE,
-      K.GRASS_TUFT_A, K.GRASS_TUFT_B, K.GRASS_TUFT_C, K.GRASS_TUFT_D,
-      K.GRASS_ROCK_A, K.GRASS_ROCK_B, K.MUSHROOM,
+      K.GRASS_TUFT_A, K.GRASS_TUFT_B,
     ];
     let decorSeed = 7;
     for (let r = 1; r < MAP_ROWS - 1; r++) {
@@ -302,9 +297,9 @@ export class GameScene extends Phaser.Scene {
       for (let c = 1; c < MAP_COLS - 1; c++) {
         if (inTilled(r, c) || inWater(r, c)) continue;
         if (reserved.has(`${r},${c}`)) continue;
-        // Sparse deterministic placement (~ every 5 tiles)
+        // Very sparse: ~every 12 tiles for a clean look
         decorSeed = (decorSeed * 1103515245 + 12345) & 0x7fffffff;
-        if (decorSeed % 5 !== 0) continue;
+        if (decorSeed % 12 !== 0) continue;
         const frame = decorFlowers[decorSeed % decorFlowers.length];
         place(c, r, frame);
       }
