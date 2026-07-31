@@ -3,3 +3,5 @@ dist/
 .DS_Store
 *.local
 debug-screenshot.png
+.maestro/
+tmp_downloads/

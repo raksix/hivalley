@@ -186,13 +186,13 @@ export class PreloadScene extends Phaser.Scene {
   createAnimations() {
     const anims = this.anims;
 
-    // --- Character idle (128x96 = 8 cols x 3 rows, frame 16x32) ---
-    // Row 0: down, Row 1: left, Row 2: right. Each row has 4 frames.
+    // --- Character idle (128x96 = 4 cols x 3 rows, frame 32x32) ---
+    // Row 0: down (frames 0-3), Row 1: left (frames 4-7), Row 2: right (frames 8-11).
     // NOTE: "up" direction uses "down" frames as fallback (no up spritesheet).
     if (!anims.exists('farm:idle-down')) {
       anims.create({ key: 'farm:idle-down',   frames: anims.generateFrameNumbers('farm:char-idle', { start: 0, end: 3 }),  frameRate: 4, repeat: -1 });
-      anims.create({ key: 'farm:idle-left',   frames: anims.generateFrameNumbers('farm:char-idle', { start: 8, end: 11 }), frameRate: 4, repeat: -1 });
-      anims.create({ key: 'farm:idle-right',  frames: anims.generateFrameNumbers('farm:char-idle', { start: 16, end: 19 }), frameRate: 4, repeat: -1 });
+      anims.create({ key: 'farm:idle-left',   frames: anims.generateFrameNumbers('farm:char-idle', { start: 4, end: 7 }),  frameRate: 4, repeat: -1 });
+      anims.create({ key: 'farm:idle-right',  frames: anims.generateFrameNumbers('farm:char-idle', { start: 8, end: 11 }), frameRate: 4, repeat: -1 });
       anims.create({ key: 'farm:idle-up',     frames: anims.generateFrameNumbers('farm:char-idle', { start: 0, end: 3 }),  frameRate: 4, repeat: -1 });
     }
 
