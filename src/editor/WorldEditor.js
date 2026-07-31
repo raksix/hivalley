@@ -1071,6 +1071,26 @@ export class WorldEditor extends Phaser.Scene {
     this.events.on('save-map', () => this._saveMap());
     this.events.on('load-map', () => this._loadMap());
     this.events.on('export-map', () => this._exportMap());
+
+    // Toolbar action events (yeni compact toolbar'dan gelir)
+    this.events.on('toolbar-action', (action) => {
+      switch (action) {
+        case 'undo': this._undo(); break;
+        case 'redo': this._redo(); break;
+        case 'grid': this._toggleGrid(); break;
+        case 'save': this._saveMap(); break;
+        case 'load': this._loadMap(); break;
+        case 'clear':
+          this._saveUndoState();
+          this.mapData = this._createEmptyMap();
+          this._renderAllTiles();
+          this._updateTileCount();
+          this._showNotification('Harita temizlendi', 1500);
+          break;
+        case 'zoom-in': this._setZoom(this.zoom + 0.3); break;
+        case 'zoom-out': this._setZoom(this.zoom - 0.3); break;
+      }
+    });
   }
 
   // ═══════════════════════════════════════════════════

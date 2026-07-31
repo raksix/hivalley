@@ -1,9 +1,9 @@
 // HiValley — World Editor Toolbar
 //
 // Üst bar: Araç seçimi, undo/redo, save/load, grid toggle, zoom kontrolü
+// Responsive: Ekran boyutuna göre otomatik uyum sağlar
 
 import Phaser from 'phaser';
-import { PALETTE } from '../utils/palette.js';
 
 export class EditorToolbar {
   /**
@@ -12,9 +12,10 @@ export class EditorToolbar {
   constructor(scene) {
     this.scene = scene;
     this.buttons = [];
-    this.activeTool = 'paint'; // paint | eraser | select | move
-    this.buttonsGroup = scene.add.container(0, 0);
-    this.buttonsGroup.setDepth(1000);
+    this.actionButtons = [];
+    this.activeTool = 'paint';
+    this.container = scene.add.container(0, 0);
+    this.container.setDepth(1000);
 
     this._createToolbar();
   }
@@ -22,230 +23,240 @@ export class EditorToolbar {
   _createToolbar() {
     const scene = this.scene;
     const W = scene.scale.width;
+    const TOOLBAR_H = 34;
+    const BTN_SIZE = 28;
+    const ICON_SIZE = 16;
 
-    // Arka plan paneli
+    // Arka plan
     const bg = scene.add.graphics();
-    bg.fillStyle(0x1a1a2e, 0.95);
-    bg.fillRoundedRect(0, 0, W, 40, 0);
-    bg.lineStyle(1, 0x3a3a5e);
-    bg.strokeRoundedRect(0, 0, W, 40, 0);
-    this.buttonsGroup.add(bg);
+    bg.fillStyle(0x12122a, 0.95);
+    bg.fillRect(0, 0, W, TOOLBAR_H);
+    bg.lineStyle(1, 0x3a3a5e, 0.6);
+    bg.lineBetween(0, TOOLBAR_H, W, TOOLBAR_H);
+    this.container.add(bg);
+    this._bg = bg;
+    this._toolbarH = TOOLBAR_H;
 
-    // Araç butonları —daha kompakt:38px genişlik,42px aralık
-    const BTN_W = 38;
-    const BTN_GAP = 42;
+    // Sol taraf: Araç butonları
     const tools = [
-      { key: 'paint', icon: '🖌', label: 'Boya', shortcut: 'B' },
-      { key: 'eraser', icon: '🧹', label: 'Sil', shortcut: 'E' },
-      { key: 'select', icon: '📦', label: 'Seç', shortcut: 'S' },
-      { key: 'move', icon: '✋', label: 'Taşı', shortcut: 'M' },
-      { key: 'fill', icon: '🪣', label: 'Dol.', shortcut: 'F' },
-      { key: 'rect', icon: '⬜', label: 'Rect', shortcut: 'R' },
+      { key: 'paint', icon: '🖌', label: 'B', tip: 'Boya [B]' },
+      { key: 'eraser', icon: '✕', label: 'E', tip: 'Sil [E]' },
+      { key: 'fill', icon: '▣', label: 'F', tip: 'Doldur [F]' },
+      { key: 'rect', icon: '□', label: 'R', tip: 'Dikdörtgen [R]' },
+      { key: 'select', icon: '⊡', label: 'S', tip: 'Seç [S]' },
+      { key: 'move', icon: '✥', label: 'M', tip: 'Taşı [M]' },
     ];
 
-    let xPos = 24;
+    let x = 6;
+    const y = (TOOLBAR_H - BTN_SIZE) / 2;
+
     tools.forEach(tool => {
-      const btn = this._createToolButton(xPos, 6, tool, BTN_W);
-      this.buttons.push(btn);
-      xPos += BTN_GAP;
+      const btn = this._createToolButton(x, y, BTN_SIZE, tool);
+      x += BTN_SIZE + 3;
     });
 
     // Ayırıcı çizgi
-    const sep = scene.add.graphics();
-    sep.lineStyle(1, 0x3a3a5e);
-    sep.lineBetween(xPos, 8, xPos, 32);
-    this.buttonsGroup.add(sep);
-    xPos += 10;
+    const sep1 = scene.add.graphics();
+    sep1.lineStyle(1, 0x3a3a5e, 0.4);
+    sep1.lineBetween(x + 2, 6, x + 2, TOOLBAR_H - 6);
+    this.container.add(sep1);
+    x += 10;
 
-    // Sol panel toggle
-    this._createActionBtn(xPos, 6, '📋', 'Panel', BTN_GAP, () => {
-      scene.events.emit('toggle-palette');
+    // Orta: Aksiyon butonları
+    const actions = [
+      { key: 'undo', label: '↩', tip: 'Geri Al [Ctrl+Z]' },
+      { key: 'redo', label: '↪', tip: 'İleri Al [Ctrl+Y]' },
+      { key: 'grid', label: '#', tip: 'Izgara [G]' },
+      { key: 'save', label: '💾', tip: 'Kaydet [Ctrl+S]' },
+      { key: 'load', label: '📂', tip: 'Yükle [Ctrl+O]' },
+      { key: 'clear', label: '🗑', tip: 'Temizle' },
+    ];
+
+    actions.forEach(action => {
+      const btn = this._createActionButton(x, y, BTN_SIZE, action);
+      x += BTN_SIZE + 3;
     });
-    xPos += BTN_GAP;
 
-    // Grid toggle
-    this.gridBtn = this._createActionBtn(xPos, 6, '🔲', 'Grid', BTN_GAP, () => {
-      scene.events.emit('toggle-grid');
-    });
-    xPos += BTN_GAP;
+    // Sağ taraf: Zoom kontrolü
+    const zoomX = W - 120;
+    this._createZoomControls(zoomX, y, BTN_SIZE);
 
-    // Snap toggle
-    this.snapBtn = this._createActionBtn(xPos, 6, '🧲', 'Snap', BTN_GAP, () => {
-      scene.events.emit('toggle-snap');
-    });
-    xPos += BTN_GAP;
-
-    // Undo
-    this._createActionBtn(xPos, 6, '↩️', 'Undo', BTN_GAP, () => {
-      scene.events.emit('undo');
-    }, 'Ctrl+Z');
-    xPos += BTN_GAP;
-
-    // Redo
-    this._createActionBtn(xPos, 6, '↪️', 'Redo', BTN_GAP, () => {
-      scene.events.emit('redo');
-    }, 'Ctrl+Y');
-    xPos += BTN_GAP;
-
-    // Ayırıcı
-    const sep2 = scene.add.graphics();
-    sep2.lineStyle(1, 0x3a3a5e);
-    sep2.lineBetween(xPos, 8, xPos, 32);
-    this.buttonsGroup.add(sep2);
-    xPos += 10;
-
-    // Kaydet
-    this._createActionBtn(xPos, 6, '💾', 'Save', BTN_GAP, () => {
-      scene.events.emit('save-map');
-    }, 'Ctrl+S');
-    xPos += BTN_GAP;
-
-    // Yükle
-    this._createActionBtn(xPos, 6, '📂', 'Load', BTN_GAP, () => {
-      scene.events.emit('load-map');
-    }, 'Ctrl+O');
-    xPos += BTN_GAP;
-
-    // Export
-    this._createActionBtn(xPos, 6, '📤', 'Export', BTN_GAP, () => {
-      scene.events.emit('export-map');
-    });
-    xPos += BTN_GAP;
-
-    // Sağ tarafta: Zoom + Info
-    const rightX = W - 10;
-
-    // Zoom Controls
-    const zoomLabel = scene.add.text(rightX - 100, 11, '🔍', {
-      fontSize: '16px',
-    });
-    this.buttonsGroup.add(zoomLabel);
-
-    const zoomOutBtn = scene.add.text(rightX - 75, 10, '➖', {
-      fontSize: '14px',
-      padding: { x: 4, y: 2 },
-    }).setInteractive({ useHandCursor: true });
-    zoomOutBtn.on('pointerdown', () => scene.events.emit('zoom-out'));
-    this.buttonsGroup.add(zoomOutBtn);
-
-    this.zoomText = scene.add.text(rightX - 52, 11, '100%', {
-      fontSize: '11px',
+    // Tooltip text
+    this.tooltipText = scene.add.text(W / 2, TOOLBAR_H + 2, '', {
+      fontSize: '9px',
       color: '#aaaacc',
       fontFamily: 'monospace',
-    });
-    this.buttonsGroup.add(this.zoomText);
+      align: 'center',
+    }).setOrigin(0.5, 0).setDepth(1001).setAlpha(0);
 
-    const zoomInBtn = scene.add.text(rightX - 22, 10, '➕', {
-      fontSize: '14px',
-      padding: { x: 4, y: 2 },
-    }).setInteractive({ useHandCursor: true });
-    zoomInBtn.on('pointerdown', () => scene.events.emit('zoom-in'));
-    this.buttonsGroup.add(zoomInBtn);
+    this.container.add(this.tooltipText);
   }
 
-  _createToolButton(x, y, tool, btnW = 38) {
+  _createToolButton(x, y, size, tool) {
     const scene = this.scene;
+
     const container = scene.add.container(x, y);
 
     const bg = scene.add.graphics();
-    const isActive = this.activeTool === tool.key;
-    bg.fillStyle(isActive ? 0x4a4a8e : 0x2a2a4e, 0.8);
-    bg.fillRoundedRect(0, 0, btnW, 28, 4);
+    const isActive = tool.key === this.activeTool;
+    bg.fillStyle(isActive ? 0x4a4a8e : 0x1e1e3a, 0.9);
+    bg.fillRoundedRect(0, 0, size, size, 4);
+    bg.lineStyle(1, isActive ? 0x6a6aae : 0x3a3a5e, 0.6);
+    bg.strokeRoundedRect(0, 0, size, size, 4);
     container.add(bg);
 
-    const icon = scene.add.text(4, 4, tool.icon, {
-      fontSize: '12px',
-    });
+    const icon = scene.add.text(size / 2, size / 2, tool.icon, {
+      fontSize: '13px',
+      align: 'center',
+    }).setOrigin(0.5);
     container.add(icon);
 
-    const label = scene.add.text(20, 7, tool.label, {
-      fontSize: '7px',
-      color: '#ccccee',
-      fontFamily: 'monospace',
-    });
-    container.add(label);
-
-    container.setSize(btnW, 28);
+    // Hover efekti
+    container.setSize(size, size);
     container.setInteractive({ useHandCursor: true });
+
+    container.on('pointerover', () => {
+      if (tool.key !== this.activeTool) {
+        bg.clear();
+        bg.fillStyle(0x2a2a5e, 0.9);
+        bg.fillRoundedRect(0, 0, size, size, 4);
+        bg.lineStyle(1, 0x5a5a8e, 0.6);
+        bg.strokeRoundedRect(0, 0, size, size, 4);
+      }
+      this._showTooltip(tool.tip);
+    });
+
+    container.on('pointerout', () => {
+      const isActive = tool.key === this.activeTool;
+      bg.clear();
+      bg.fillStyle(isActive ? 0x4a4a8e : 0x1e1e3a, 0.9);
+      bg.fillRoundedRect(0, 0, size, size, 4);
+      bg.lineStyle(1, isActive ? 0x6a6aae : 0x3a3a5e, 0.6);
+      bg.strokeRoundedRect(0, 0, size, size, 4);
+      this._hideTooltip();
+    });
 
     container.on('pointerdown', () => {
       this.setActiveTool(tool.key);
     });
 
-    container.on('pointerover', () => {
-      if (this.activeTool !== tool.key) {
-        bg.clear();
-        bg.fillStyle(0x3a3a6e, 0.8);
-        bg.fillRoundedRect(0, 0, btnW, 28, 4);
-      }
+    this.container.add(container);
+
+    this.buttons.push({
+      key: tool.key,
+      bg,
+      container,
     });
 
-    container.on('pointerout', () => {
-      if (this.activeTool !== tool.key) {
-        bg.clear();
-        bg.fillStyle(0x2a2a4e, 0.8);
-        bg.fillRoundedRect(0, 0, btnW, 28, 4);
-      }
-    });
-
-    this.buttonsGroup.add(container);
-
-    // Kısayol etiketi
-    if (tool.shortcut) {
-      const shortcut = scene.add.text(x + btnW - 8, y + 20, tool.shortcut, {
-        fontSize: '6px',
-        color: '#666688',
-        fontFamily: 'monospace',
-      }).setOrigin(1, 0);
-      this.buttonsGroup.add(shortcut);
-    }
-
-    return { key: tool.key, container, bg };
+    return container;
   }
 
-  _createActionBtn(x, y, icon, label, btnW = 38, callback, shortcut = '') {
+  _createActionButton(x, y, size, action) {
     const scene = this.scene;
+
     const container = scene.add.container(x, y);
 
     const bg = scene.add.graphics();
-    bg.fillStyle(0x2a2a4e, 0.8);
-    bg.fillRoundedRect(0, 0, btnW, 28, 4);
+    bg.fillStyle(0x1a1a36, 0.8);
+    bg.fillRoundedRect(0, 0, size, size, 4);
+    bg.lineStyle(1, 0x2a2a4e, 0.4);
+    bg.strokeRoundedRect(0, 0, size, size, 4);
     container.add(bg);
 
-    const iconText = scene.add.text(Math.floor((btnW - 14) / 2), 5, icon, {
+    const label = scene.add.text(size / 2, size / 2, action.label, {
       fontSize: '12px',
-    });
-    container.add(iconText);
+      align: 'center',
+    }).setOrigin(0.5);
+    container.add(label);
 
-    container.setSize(btnW, 28);
+    container.setSize(size, size);
     container.setInteractive({ useHandCursor: true });
-
-    container.on('pointerdown', callback);
 
     container.on('pointerover', () => {
       bg.clear();
-      bg.fillStyle(0x3a3a6e, 0.8);
-      bg.fillRoundedRect(0, 0, btnW, 28, 4);
+      bg.fillStyle(0x2a2a5e, 0.9);
+      bg.fillRoundedRect(0, 0, size, size, 4);
+      bg.lineStyle(1, 0x5a5a8e, 0.6);
+      bg.strokeRoundedRect(0, 0, size, size, 4);
+      this._showTooltip(action.tip);
     });
 
     container.on('pointerout', () => {
       bg.clear();
-      bg.fillStyle(0x2a2a4e, 0.8);
-      bg.fillRoundedRect(0, 0, btnW, 28, 4);
+      bg.fillStyle(0x1a1a36, 0.8);
+      bg.fillRoundedRect(0, 0, size, size, 4);
+      bg.lineStyle(1, 0x2a2a4e, 0.4);
+      bg.strokeRoundedRect(0, 0, size, size, 4);
+      this._hideTooltip();
     });
 
-    this.buttonsGroup.add(container);
+    container.on('pointerdown', () => {
+      this.scene.events.emit('toolbar-action', action.key);
+    });
 
-    if (shortcut) {
-      const sc = scene.add.text(x + btnW - 4, y + 20, shortcut, {
-        fontSize: '6px',
-        color: '#666688',
-        fontFamily: 'monospace',
-      }).setOrigin(1, 0);
-      this.buttonsGroup.add(sc);
-    }
+    this.container.add(container);
+    this.actionButtons.push({ key: action.key, container });
 
     return container;
+  }
+
+  _createZoomControls(x, y, btnSize) {
+    const scene = this.scene;
+
+    // Zoom -
+    const zoomOut = scene.add.container(x, y);
+    const zbg1 = scene.add.graphics();
+    zbg1.fillStyle(0x1a1a36, 0.8);
+    zbg1.fillRoundedRect(0, 0, btnSize, btnSize, 4);
+    zoomOut.add(zbg1);
+    const zLabel1 = scene.add.text(btnSize / 2, btnSize / 2, '−', {
+      fontSize: '14px', color: '#ccccdd',
+    }).setOrigin(0.5);
+    zoomOut.add(zLabel1);
+    zoomOut.setSize(btnSize, btnSize);
+    zoomOut.setInteractive({ useHandCursor: true });
+    zoomOut.on('pointerdown', () => {
+      this.scene.events.emit('toolbar-action', 'zoom-out');
+    });
+    this.container.add(zoomOut);
+
+    // Zoom text
+    this.zoomText = scene.add.text(x + btnSize + 4, y + btnSize / 2, '200%', {
+      fontSize: '10px',
+      color: '#aaaacc',
+      fontFamily: 'monospace',
+    }).setOrigin(0, 0.5);
+    this.container.add(this.zoomText);
+
+    // Zoom +
+    const zoomIn = scene.add.container(x + btnSize + 44, y);
+    const zbg2 = scene.add.graphics();
+    zbg2.fillStyle(0x1a1a36, 0.8);
+    zbg2.fillRoundedRect(0, 0, btnSize, btnSize, 4);
+    zoomIn.add(zbg2);
+    const zLabel2 = scene.add.text(btnSize / 2, btnSize / 2, '+', {
+      fontSize: '14px', color: '#ccccdd',
+    }).setOrigin(0.5);
+    zoomIn.add(zLabel2);
+    zoomIn.setSize(btnSize, btnSize);
+    zoomIn.setInteractive({ useHandCursor: true });
+    zoomIn.on('pointerdown', () => {
+      this.scene.events.emit('toolbar-action', 'zoom-in');
+    });
+    this.container.add(zoomIn);
+  }
+
+  _showTooltip(text) {
+    if (this.tooltipText) {
+      this.tooltipText.setText(text);
+      this.tooltipText.setAlpha(1);
+    }
+  }
+
+  _hideTooltip() {
+    if (this.tooltipText) {
+      this.tooltipText.setAlpha(0);
+    }
   }
 
   setActiveTool(toolKey) {
@@ -255,8 +266,10 @@ export class EditorToolbar {
     this.buttons.forEach(btn => {
       const isActive = btn.key === toolKey;
       btn.bg.clear();
-      btn.bg.fillStyle(isActive ? 0x4a4a8e : 0x2a2a4e, 0.8);
-      btn.bg.fillRoundedRect(0, 0, 38, 28, 4);
+      btn.bg.fillStyle(isActive ? 0x4a4a8e : 0x1e1e3a, 0.9);
+      btn.bg.fillRoundedRect(0, 0, 28, 28, 4);
+      btn.bg.lineStyle(1, isActive ? 0x6a6aae : 0x3a3a5e, 0.6);
+      btn.bg.strokeRoundedRect(0, 0, 28, 28, 4);
     });
 
     this.scene.events.emit('tool-changed', toolKey);
@@ -268,7 +281,11 @@ export class EditorToolbar {
     }
   }
 
+  getHeight() {
+    return this._toolbarH || 34;
+  }
+
   destroy() {
-    this.buttonsGroup.destroy();
+    this.container.destroy();
   }
 }
