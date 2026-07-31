@@ -251,19 +251,25 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   _buildCursor() {
-    // Replace default system cursor with our hand sprite so the menu has
-    // a unified feel.
+    // Replace default system cursor with our arrow sprite so the menu has
+    // a unified feel. Origin is set to (0,0) so the arrow tip aligns with
+    // the actual mouse position.
     this.input.setDefaultCursor('none');
     this.cursorImg = this.add
       .image(0, 0, TEXTURES.cursorPointer())
+      .setOrigin(0, 0)
       .setScale(3)
       .setDepth(9999);
     this.input.on('pointermove', (p) => {
-      this.cursorImg.setPosition(p.worldX + 3, p.worldY + 3);
+      this.cursorImg.setPosition(p.x, p.y);
     });
     this.input.on('pointerdown', () => {
       this.cursorImg.setTexture('gen:btn-hover');
-      setTimeout(() => this.cursorImg.setTexture(TEXTURES.cursorPointer()), 90);
+      this.cursorImg.setOrigin(0.5, 0.5);
+      setTimeout(() => {
+        this.cursorImg.setTexture(TEXTURES.cursorPointer());
+        this.cursorImg.setOrigin(0, 0);
+      }, 90);
     });
   }
 

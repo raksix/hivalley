@@ -676,27 +676,38 @@ function buildPlayerPreview(scene) {
 // ---------------------------------------------------------------------------
 
 function buildCursorTextures(scene) {
-  // 12x16 little hand-pointer.
-  const W = 12;
-  const H = 16;
+  // 16x20 arrow cursor with dark outline — classic pointer, visible on any background.
+  const W = 16;
+  const H = 20;
+  const O = PALETTE.uiTextShadow; // dark outline color
+  const F = PALETTE.uiText;       // light fill color
+  const H2 = PALETTE.uiHover;     // highlight inner edge
   const grid = [
-    [null, null, null, null, null, null, null, PALETTE.uiText, null, null, null, null],
-    [null, null, null, null, null, null, PALETTE.uiText, PALETTE.uiText, null, null, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, null, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, null, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, null, null],
-    [null, null, null, null, null, PALETTE.uiText, PALETTE.uiText, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, PALETTE.uiText, null],
-    [null, null, null, null, null, null, null, PALETTE.uiHover, PALETTE.uiText, PALETTE.uiText, null, null],
-    [null, null, null, null, null, null, null, PALETTE.uiHover, PALETTE.uiText, null, null, null],
-    [null, null, null, null, null, null, null, PALETTE.uiText, PALETTE.uiText, null, null, null],
-    [null, null, null, null, null, null, null, PALETTE.uiText, null, null, null, null],
+    [O, O, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    [O, F, O, O, null, null, null, null, null, null, null, null, null, null, null, null],
+    [O, F, H2, F, O, O, null, null, null, null, null, null, null, null, null, null],
+    [O, F, H2, F, F, F, O, O, null, null, null, null, null, null, null, null],
+    [O, F, H2, F, F, F, F, F, O, O, null, null, null, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, O, O, null, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, O, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, F, O, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, F, F, O, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, F, F, F, O],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, F, O, O, O],
+    [O, F, H2, F, F, F, F, F, F, F, F, F, F, O, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, O, O, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, F, O, null, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, F, O, O, null, null, null, null],
+    [O, F, H2, F, F, F, F, F, F, O, O, null, null, null, null, null],
+    [O, F, O, F, F, F, F, F, O, O, null, null, null, null, null, null],
+    [O, O, null, O, F, F, F, O, O, null, null, null, null, null, null, null],
+    [null, null, null, O, F, F, O, O, null, null, null, null, null, null, null, null],
+    [null, null, null, O, O, O, O, null, null, null, null, null, null, null, null, null],
   ];
   drawPixelGrid(scene, 'cursor-pointer', W, H, grid);
 
-  // Default crosshair-ish cursor dot (4x4)
-  fillRect(scene, 'cursor-dot', 4, 4, PALETTE.uiText);
+  // Default crosshair-ish cursor dot (6x6) — slightly bigger for visibility
+  fillRect(scene, 'cursor-dot', 6, 6, PALETTE.uiText);
 }
 
 // ---------------------------------------------------------------------------
