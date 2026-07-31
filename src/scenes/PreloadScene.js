@@ -20,6 +20,9 @@ const ASSETS = {
   // Tileset (16x16 tiles)
   tileset:    { key: 'farm:tileset',      url: 'assets/farm-rpg/Tileset/Tileset Spring.png', frameWidth: 16, frameHeight: 16 },
 
+  // Kenney Tiny Farm tileset (CC0) — 12×11 tiles, 192×176 packed
+  kenneyTiles: { key: 'farm:kenney-tiles', url: 'assets/kenney-tiny-farm/Tilemap/tilemap_packed.png', frameWidth: 16, frameHeight: 16 },
+
   // Objects
   house:      { key: 'farm:house',        url: 'assets/farm-rpg/Objects/House.png' },
   interior:   { key: 'farm:interior',     url: 'assets/farm-rpg/Objects/Interior.png' },

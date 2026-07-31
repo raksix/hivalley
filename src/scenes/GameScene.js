@@ -17,6 +17,7 @@ import {
   playClick,
 } from '../utils/menuMusic.js';
 import { PALETTE } from '../utils/palette.js';
+import { KENNEY_TILES, KENNEY_DECOR } from '../utils/kenneyTiles.js';
 
 // Map dimensions in tiles (16x16 each)
 const MAP_COLS = 30;
@@ -67,6 +68,9 @@ export class GameScene extends Phaser.Scene {
 
     // --- Tile map ---
     this.buildMap();
+
+    // --- Kenney Tiny Farm overlay (enriched ground & decorations) ---
+    this.buildKenneyOverlay();
 
     // --- Player character ---
     this.buildPlayer();
@@ -168,6 +172,140 @@ export class GameScene extends Phaser.Scene {
     // Chest near house
     this.chest = this.add.image(360, 55, 'farm:chest').setOrigin(0.5, 1).setDepth(2);
     this.mapContainer.add(this.chest);
+  }
+
+  // ===================== KENNEY OVERLAY =====================
+  // Overlay adds richness on top of the base Farm RPG tiles:
+  //  - Stone path (instead of plain dirt path)
+  //  - Tilled-soil variations with hoe lines
+  //  - A small pond in the SE corner
+  //  - Wood plank border at top/bottom edges
+  //  - Decorative flowers & tufts scattered on grass
+  //  - New objects: bush, crate, big tree, barrel, lantern, well
+  //
+  // Source: Kenney Tiny Farm (CC0) — https://kenney.nl/assets/tiny-farm
+  buildKenneyOverlay() {
+    if (!this.textures.exists('farm:kenney-tiles')) return;
+
+    const K = KENNEY_TILES;
+    const place = (col, row, frame, origin = KENNEY_DECOR.CENTER) => {
+      const x = col * TILE + TILE / 2;
+      const y = row * TILE + TILE / 2;
+      const img = this.add.image(x, y, 'farm:kenney-tiles', frame).setOrigin(origin.x, origin.y);
+      img.setDepth(0);
+      this.mapContainer.add(img);
+      return img;
+    };
+    const placeStand = (col, row, frame) => place(col, row, frame, KENNEY_DECOR.STAND);
+
+    // ---- Wood plank border (top + bottom rows) ----
+    for (let c = 0; c < MAP_COLS; c++) {
+      place(c, 0, K.WOOD_PLANK_H);
+      place(c, MAP_ROWS - 1, K.WOOD_PLANK_H);
+    }
+    // Vertical wood edges
+    for (let r = 1; r < MAP_ROWS - 1; r++) {
+      place(0, r, K.WOOD_PLANK_V);
+      place(MAP_COLS - 1, r, K.WOOD_PLANK_V);
+    }
+
+    // ---- Stone path (replace base dirt at row 9) ----
+    for (let c = 4; c <= 25; c++) {
+      let frame = K.PATH_HORIZ;
+      if (c === 4) frame = K.PATH_CORNER_NW === undefined ? K.PATH_HORIZ : K.PATH_HORIZ;
+      place(c, 9, frame);
+    }
+
+    // ---- Tilled soil variations (rows 5–7, cols 6–12) ----
+    const tilledSeq = [K.TILLED_A, K.TILLED_B, K.TILLED_C, K.TILLED_D, K.TILLED_E];
+    for (let r = 5; r <= 7; r++) {
+      for (let c = 6; c <= 12; c++) {
+        const idx = (r * 7 + c) % tilledSeq.length;
+        place(c, r, tilledSeq[idx]);
+      }
+    }
+
+    // ---- Tilled soil (rows 5–7, cols 17–23) ----
+    const tilledSeq2 = [K.TILLED_F, K.TILLED_G, K.TILLED_H, K.TILLED_A, K.TILLED_B];
+    for (let r = 5; r <= 7; r++) {
+      for (let c = 17; c <= 23; c++) {
+        const idx = (r * 5 + c) % tilledSeq2.length;
+        place(c, r, tilledSeq2[idx]);
+      }
+    }
+
+    // ---- Pond in the SE corner (rows 13–15, cols 24–28) ----
+    for (let r = 13; r <= 15; r++) {
+      for (let c = 24; c <= 28; c++) {
+        const frame =
+          K.WATER_A + ((r * 5 + c) % 8); // cycle through WATER_A..WATER_H
+        place(c, r, frame);
+      }
+    }
+
+    // ---- Grass detail (decorative flowers & tufts) ----
+    // Avoid placing them on path (row 9), planks (rows 0/17), water (rows 13-15 cols 24-28),
+    // tilled-soil areas, or where objects sit.
+    const skipRows = new Set([0, 9, 17]);
+    const inTilled = (r, c) =>
+      (r >= 5 && r <= 7 && ((c >= 6 && c <= 12) || (c >= 17 && c <= 23)));
+    const inWater = (r, c) => r >= 13 && r <= 15 && c >= 24 && c <= 28;
+    const reserved = new Set([
+      ['3', '15'], ['4', '5'], ['12', '22'], ['14', '5'], // base flower spots
+      ['2', '26'], ['2', '27'], ['2', '28'], ['2', '29'], // house/shrubs area
+    ]);
+
+    const decorFlowers = [
+      K.GRASS_FLOWER_A, K.GRASS_FLOWER_B, K.GRASS_FLOWER_C,
+      K.GRASS_FLOWER_RED, K.GRASS_FLOWER_YELLOW, K.GRASS_FLOWER_BLUE,
+      K.GRASS_TUFT_A, K.GRASS_TUFT_B, K.GRASS_TUFT_C, K.GRASS_TUFT_D,
+      K.GRASS_ROCK_A, K.GRASS_ROCK_B, K.MUSHROOM,
+    ];
+    let decorSeed = 7;
+    for (let r = 1; r < MAP_ROWS - 1; r++) {
+      if (skipRows.has(r)) continue;
+      for (let c = 1; c < MAP_COLS - 1; c++) {
+        if (inTilled(r, c) || inWater(r, c)) continue;
+        if (reserved.has(`${r},${c}`)) continue;
+        // Sparse deterministic placement (~ every 5 tiles)
+        decorSeed = (decorSeed * 1103515245 + 12345) & 0x7fffffff;
+        if (decorSeed % 5 !== 0) continue;
+        const frame = decorFlowers[decorSeed % decorFlowers.length];
+        place(c, r, frame);
+      }
+    }
+
+    // ---- New decorations (decorative objects) ----
+    // Bush (right side, row 4)
+    this.bush1 = placeStand(26, 4, K.BUSH_GREEN_A);
+    this.bush2 = placeStand(27, 4, K.BUSH_FLOWER);
+    this.bush3 = placeStand(2, 11, K.BUSH_BERRY);
+
+    // Crate (next to house)
+    this.crate1 = placeStand(22, 10, K.CRATE_WOOD);
+    this.crate2 = placeStand(5, 10, K.BARREL);
+
+    // Barrel near path
+    this.barrel1 = placeStand(13, 10, K.BARREL_LIE);
+
+    // Lantern (decorative lighting) near house
+    this.lantern1 = placeStand(20, 9, K.LANTERN);
+
+    // Well (center of farm plots)
+    this.well1 = placeStand(14, 6, K.WELL);
+
+    // Sapling pine (top-left corner area)
+    this.pineYoung = placeStand(4, 2, K.TREE_PINE);
+
+    // ---- Fence segments along the tilled plots ----
+    // South fence of the first plot (row 8, cols 6–12)
+    for (let c = 6; c <= 12; c++) {
+      place(c, 8, K.FENCE_H, KENNEY_DECOR.STAND);
+    }
+    // North fence of the second plot (row 4, cols 17–23)
+    for (let c = 17; c <= 23; c++) {
+      place(c, 4, K.FENCE_H, KENNEY_DECOR.STAND);
+    }
   }
 
   // ===================== PLAYER =====================
@@ -368,10 +506,13 @@ export class GameScene extends Phaser.Scene {
     // Update name tag position
     this.nameTag.setPosition(this.player.x, this.player.y - 20);
 
-    // Show interaction hint when near objects
+    // Show interaction hint when near objects (base objects + Kenney additions)
     const nearAny =
       Phaser.Math.Distance.Between(this.player.x, this.player.y, this.chest.x, this.chest.y) < 40 ||
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50;
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.house.x, this.house.y) < 50 ||
+      (this.crate1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.crate1.x, this.crate1.y) < 32) ||
+      (this.well1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.well1.x, this.well1.y) < 32) ||
+      (this.lantern1 && Phaser.Math.Distance.Between(this.player.x, this.player.y, this.lantern1.x, this.lantern1.y) < 32);
     this.interactHint.setAlpha(nearAny ? 1 : 0);
   }
 }
