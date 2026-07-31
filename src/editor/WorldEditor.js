@@ -31,6 +31,12 @@ export class WorldEditor extends Phaser.Scene {
   }
 
   create() {
+    // ─── CANVAS RESIZE ──────────────────────────────
+    // Editor için canvas'ı büyüt, kapatınca geri küçült
+    this._originalWidth = this.scale.width;
+    this._originalHeight = this.scale.height;
+    this.scale.resize(1280, 720);
+
     // ─── STATE ─────────────────────────────────────
     this.currentTool = 'paint';
     this.selectedAsset = null;
@@ -192,7 +198,7 @@ export class WorldEditor extends Phaser.Scene {
   _createStatusBar() {
     const W = this.scale.width;
     const H = this.scale.height;
-    const barH = 20;
+    const barH = 24;
 
     this.statusBar = this.add.graphics();
     this.statusBar.fillStyle(0x12122a, 0.95);
@@ -1117,5 +1123,15 @@ export class WorldEditor extends Phaser.Scene {
       bg.destroy();
       text.destroy();
     });
+  }
+
+  // Sahne kapanınca canvas'ı eski boyutuna geri al
+  shutdown() {
+    if (this._originalWidth && this._originalHeight) {
+      this.scale.resize(this._originalWidth, this._originalHeight);
+    }
+    // Toolbar ve palette temizle
+    if (this.toolbar) this.toolbar.destroy();
+    if (this.palette) this.palette.destroy();
   }
 }

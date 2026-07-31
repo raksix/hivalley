@@ -57,12 +57,14 @@ export class EditorPalette {
     // Kategori sekmeleri
     this._createCategoryTabs();
 
-    // Grid alanı
-    this.gridContainer = scene.add.container(0, SEARCH_H + TAB_H + 40);
+    // Grid alanı - tab'ların bittiği yerden başla (max 2 satır tab)
+    const tabRows = Math.ceil(Object.keys(ASSET_CATEGORIES).length / 5);
+    const gridY = SEARCH_H + 34 + tabRows * (TAB_H + 2) + 4;
+    this.gridContainer = scene.add.container(0, gridY);
     this.container.add(this.gridContainer);
 
     // Seçili asset preview
-    this.previewContainer = scene.add.container(0, H - 80);
+    this.previewContainer = scene.add.container(0, H - 90);
     this.container.add(this.previewContainer);
     this._createPreview();
   }
@@ -164,37 +166,34 @@ export class EditorPalette {
     const scene = this.scene;
     const y = SEARCH_H + 34;
     const categories = Object.keys(ASSET_CATEGORIES);
-    const tabWidth = (PANEL_W - GRID_PADDING * 2) / Math.min(categories.length, 4);
+    // Her satırda5 kategori sığdır (daha geniş tab)
+    const cols = 5;
+    const tabWidth = (PANEL_W - GRID_PADDING * 2) / cols;
 
     this.tabButtons = [];
 
-    // İlk satır: 4 kategori
-    const row1 = categories.slice(0, 4);
-    row1.forEach((key, i) => {
-      const cat = ASSET_CATEGORIES[key];
-      const x = GRID_PADDING + i * tabWidth;
-      const btn = this._createTab(x, y, tabWidth, key, cat.name);
-      this.tabButtons.push({ key, btn });
-    });
+    // Kısa etiketler - emoji yerine düz text
+    const SHORT_LABELS = {
+      tiles: 'Tiles',
+      kenneyTiles: 'Kenney',
+      buildings: 'Bldg',
+      nature: 'Nature',
+      fences: 'Fence',
+      roads: 'Roads',
+      items: 'Items',
+      crops: 'Crops',
+      animals: 'Animal',
+      character: 'Char',
+    };
 
-    // İkinci satır: 4 kategori
-    if (categories.length > 4) {
-      const row2 = categories.slice(4, 8);
-      row2.forEach((key, i) => {
+    const rows = Math.ceil(categories.length / cols);
+    for (let r = 0; r < rows; r++) {
+      const row = categories.slice(r * cols, (r + 1) * cols);
+      row.forEach((key, i) => {
         const cat = ASSET_CATEGORIES[key];
         const x = GRID_PADDING + i * tabWidth;
-        const btn = this._createTab(x, y + TAB_H + 2, tabWidth, key, cat.name);
-        this.tabButtons.push({ key, btn });
-      });
-    }
-
-    // Üçüncü satır: kalan kategoriler
-    if (categories.length > 8) {
-      const row3 = categories.slice(8);
-      row3.forEach((key, i) => {
-        const cat = ASSET_CATEGORIES[key];
-        const x = GRID_PADDING + i * tabWidth;
-        const btn = this._createTab(x, y + (TAB_H + 2) * 2, tabWidth, key, cat.name);
+        const label = SHORT_LABELS[key] || cat.name;
+        const btn = this._createTab(x, y + r * (TAB_H + 2), tabWidth, key, label);
         this.tabButtons.push({ key, btn });
       });
     }
@@ -291,7 +290,7 @@ export class EditorPalette {
     // Scroll alanı için toplam yükseklik
     const totalRows = Math.ceil(items.length / cols);
     const totalHeight = totalRows * (ITEM_SIZE + ITEM_GAP);
-    this.gridContainer.setCrop(0, 0, PANEL_W, this.scene.scale.height - 160);
+    this.gridContainer.setCrop(0, 0, PANEL_W, this.scene.scale.height - 200);
   }
 
   _createGridItem(x, y, asset) {
@@ -308,27 +307,24 @@ export class EditorPalette {
     bg.strokeRoundedRect(0, 0, ITEM_SIZE, ITEM_SIZE, 4);
     container.add(bg);
 
-    // Thumbnail
-    try {
-      if (asset.type === 'tile') {
-        const thumb = scene.add.image(ITEM_SIZE / 2, ITEM_SIZE / 2, asset.textureKey, asset.frame);
-        thumb.setDisplaySize(ITEM_SIZE - 8, ITEM_SIZE - 8);
-        container.add(thumb);
-      } else if (asset.type === 'object') {
-        const thumb = scene.add.image(ITEM_SIZE / 2, ITEM_SIZE / 2, asset.textureKey);
-        thumb.setDisplaySize(ITEM_SIZE - 8, ITEM_SIZE - 8);
-        container.add(thumb);
-      } else if (asset.type === 'spritesheet') {
-        const thumb = scene.add.image(ITEM_SIZE / 2, ITEM_SIZE / 2, asset.textureKey, 0);
-        thumb.setDisplaySize(ITEM_SIZE - 8, ITEM_SIZE - 8);
-        container.add(thumb);
+    // Thumbnail - texture yüklü mü kontrol et
+    const texExists = scene.textures.exists(asset.textureKey);
+    if (texExists) {
+      try {
+        if (asset.type === 'tile' || asset.type === 'spritesheet') {
+          const thumb = scene.add.image(ITEM_SIZE / 2, ITEM_SIZE / 2, asset.textureKey, asset.frame ?? 0);
+          thumb.setDisplaySize(ITEM_SIZE - 8, ITEM_SIZE - 8);
+          container.add(thumb);
+        } else if (asset.type === 'object') {
+          const thumb = scene.add.image(ITEM_SIZE / 2, ITEM_SIZE / 2, asset.textureKey);
+          thumb.setDisplaySize(ITEM_SIZE - 8, ITEM_SIZE - 8);
+          container.add(thumb);
+        }
+      } catch (e) {
+        this._addPlaceholder(container);
       }
-    } catch (e) {
-      // Texture yüklenmediyse placeholder
-      const placeholder = scene.add.graphics();
-      placeholder.fillStyle(0xff4444, 0.3);
-      placeholder.fillRoundedRect(4, 4, ITEM_SIZE - 8, ITEM_SIZE - 8, 2);
-      container.add(placeholder);
+    } else {
+      this._addPlaceholder(container);
     }
 
     // Tooltip (hover'da göster)
@@ -435,19 +431,37 @@ export class EditorPalette {
     this.previewType.setText(`Tür: ${asset.type} | Kategori: ${asset.categoryName || '-'}`);
     this.previewTags.setText(`Etiketler: ${(asset.tags || []).join(', ')}`);
 
-    // Thumbnail
-    try {
-      if (asset.type === 'tile') {
-        this.previewIcon.setTexture(asset.textureKey, asset.frame);
-      } else {
-        this.previewIcon.setTexture(asset.textureKey, 0);
+    // Thumbnail - texture yüklü mü kontrol et
+    const texExists = this.scene.textures.exists(asset.textureKey);
+    if (texExists) {
+      try {
+        if (asset.type === 'tile' || asset.type === 'spritesheet') {
+          this.previewIcon.setTexture(asset.textureKey, asset.frame ?? 0);
+        } else {
+          this.previewIcon.setTexture(asset.textureKey, 0);
+        }
+        this.previewIcon.setDisplaySize(48, 48);
+        this.previewIcon.setPosition(PANEL_W / 2 - 50, 44);
+        this.previewIcon.setVisible(true);
+      } catch (e) {
+        this.previewIcon.setVisible(false);
       }
-      this.previewIcon.setDisplaySize(48, 48);
-      this.previewIcon.setPosition(PANEL_W / 2 - 50, 44);
-      this.previewIcon.setVisible(true);
-    } catch (e) {
+    } else {
       this.previewIcon.setVisible(false);
     }
+  }
+
+  _addPlaceholder(container) {
+    const placeholder = this.scene.add.graphics();
+    // Yeşil diagonal cross - texture yüklenmediğini belirtir
+    placeholder.fillStyle(0x2a2a4e, 0.8);
+    placeholder.fillRect(4, 4, ITEM_SIZE - 8, ITEM_SIZE - 8);
+    placeholder.lineStyle(1, 0x4a4a6e);
+    placeholder.strokeRect(4, 4, ITEM_SIZE - 8, ITEM_SIZE - 8);
+    placeholder.lineStyle(1, 0x3a6a3a);
+    placeholder.lineBetween(6, 6, ITEM_SIZE - 6, ITEM_SIZE - 6);
+    placeholder.lineBetween(ITEM_SIZE - 6, 6, 6, ITEM_SIZE - 6);
+    container.add(placeholder);
   }
 
   toggle() {
