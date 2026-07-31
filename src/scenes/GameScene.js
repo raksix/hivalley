@@ -19,12 +19,10 @@ import {
 import { PALETTE } from '../utils/palette.js';
 import { TEXTURES } from '../utils/textures.js';
 
-// Map dimensions in tiles (16x16 each)
-const MAP_COLS = 30;
-const MAP_ROWS = 18;
+// Map dimensions in tiles (16x16 each) — defaults, overridden by editor export
 const TILE = 16;
-const MAP_W = MAP_COLS * TILE; // 480
-const MAP_H = MAP_ROWS * TILE; // 288
+const DEFAULT_MAP_COLS = 30;
+const DEFAULT_MAP_ROWS = 18;
 
 // Player movement speed (pixels per second)
 const PLAYER_SPEED = 80;
@@ -75,6 +73,22 @@ export class GameScene extends Phaser.Scene {
     const player = this.save?.player ?? PlayerState.get();
     this.playerData = player;
 
+    // Editor'dan kaydedilen harita boyutunu oku
+    let mapCols = DEFAULT_MAP_COLS;
+    let mapRows = DEFAULT_MAP_ROWS;
+    try {
+      const saved = localStorage.getItem('hivalley-editor-map');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.cols) mapCols = data.cols;
+        if (data.rows) mapRows = data.rows;
+      }
+    } catch (e) { /* use defaults */ }
+    this.mapCols = mapCols;
+    this.mapRows = mapRows;
+    this.mapW = mapCols * TILE;
+    this.mapH = mapRows * TILE;
+
     // --- Background ---
     this.cameras.main.setBackgroundColor('#4a8c3f');
 
@@ -88,9 +102,9 @@ export class GameScene extends Phaser.Scene {
     this.buildHUD(player);
 
     // --- Camera setup ---
-    this.cameras.main.setBounds(0, 0, MAP_W, MAP_H);
+    this.cameras.main.setBounds(0, 0, this.mapW, this.mapH);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-    this.cameras.main.setZoom(Math.min(w / MAP_W, h / MAP_H) * 1.2);
+    this.cameras.main.setZoom(Math.min(w / this.mapW, h / this.mapH) * 1.2);
 
     // --- Keyboard input ---
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -152,8 +166,8 @@ export class GameScene extends Phaser.Scene {
     // ---- 1. Grass ground (entire map) ----
     // Uses ONLY solid green frames (33 and 225) to avoid maze-like patterns.
     // ~90% GRASS (frame 33), ~10% GRASS_ALT (frame 225) for subtle variation.
-    for (let r = 0; r < MAP_ROWS; r++) {
-      for (let c = 0; c < MAP_COLS; c++) {
+    for (let r = 0; r < this.mapRows; r++) {
+      for (let c = 0; c < this.mapCols; c++) {
         const v = rng();
         const frame = (v % 10 === 0) ? GRASS_ALT : GRASS;
         placeTile(c, r, frame, 0);
@@ -362,8 +376,8 @@ export class GameScene extends Phaser.Scene {
     this.player.y += vy * (delta / 1000);
 
     // Clamp to map bounds
-    this.player.x = Phaser.Math.Clamp(this.player.x, 8, MAP_W - 8);
-    this.player.y = Phaser.Math.Clamp(this.player.y, 8, MAP_H - 8);
+    this.player.x = Phaser.Math.Clamp(this.player.x, 8, this.mapW - 8);
+    this.player.y = Phaser.Math.Clamp(this.player.y, 8, this.mapH - 8);
 
     // Update facing and animation
     this.facing = newFacing;

@@ -1302,6 +1302,13 @@ export class WorldEditor extends Phaser.Scene {
       }
     });
 
+    // Boyut değişince toolbar'daki display'leri güncelle (auto-expansion durumunda)
+    this.events.on('map-resized', (data) => {
+      if (this.toolbar) {
+        this.toolbar.updateMapSize(data.cols, data.rows);
+      }
+    });
+
     // Toolbar action events (yeni compact toolbar'dan gelir)
     this.events.on('toolbar-action', (action) => {
       switch (action) {

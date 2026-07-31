@@ -77,6 +77,71 @@ export class EditorToolbar {
       x += BTN_SIZE + 3;
     });
 
+    // Ayırıcı çizgi
+    const sep2 = scene.add.graphics();
+    sep2.lineStyle(1, 0x3a3a5e, 0.4);
+    sep2.lineBetween(x + 2, 6, x + 2, TOOLBAR_H - 6);
+    this.container.add(sep2);
+    x += 10;
+
+    // Harita boyutu kontrolü (Sütun / Satır / Uygula)
+    this._resizeX = x;
+    this._resizeY = y;
+
+    const colsLabel = scene.add.text(x, y + 6, 'S:', { fontSize: '10px', color: '#aaa', fontFamily: 'monospace' });
+    this.container.add(colsLabel);
+    x += colsLabel.width + 2;
+
+    const colsBg = scene.add.graphics();
+    colsBg.fillStyle(0x1a1a3a, 0.9);
+    colsBg.fillRoundedRect(x, y + 2, 32, 20, 3);
+    colsBg.lineStyle(1, 0x4a4a6e, 0.6);
+    colsBg.strokeRoundedRect(x, y + 2, 32, 20, 3);
+    this.container.add(colsBg);
+    this._colsValue = 30;
+    this._colsText = scene.add.text(x + 4, y + 6, '30', { fontSize: '11px', color: '#fff', fontFamily: 'monospace' });
+    this.container.add(this._colsText);
+    this._colsBgX = x;
+    x += 36;
+
+    const rowsLabel = scene.add.text(x, y + 6, 'Sat:', { fontSize: '10px', color: '#aaa', fontFamily: 'monospace' });
+    this.container.add(rowsLabel);
+    x += rowsLabel.width + 2;
+
+    const rowsBg = scene.add.graphics();
+    rowsBg.fillStyle(0x1a1a3a, 0.9);
+    rowsBg.fillRoundedRect(x, y + 2, 32, 20, 3);
+    rowsBg.lineStyle(1, 0x4a4a6e, 0.6);
+    rowsBg.strokeRoundedRect(x, y + 2, 32, 20, 3);
+    this.container.add(rowsBg);
+    this._rowsValue = 18;
+    this._rowsText = scene.add.text(x + 4, y + 6, '18', { fontSize: '11px', color: '#fff', fontFamily: 'monospace' });
+    this.container.add(this._rowsText);
+    this._rowsBgX = x;
+    x += 36;
+
+    // Boyutu uygula butonu
+    const applyBg = scene.add.graphics();
+    applyBg.fillStyle(0x2a4a2a, 0.9);
+    applyBg.fillRoundedRect(x, y + 2, 60, 20, 3);
+    applyBg.lineStyle(1, 0x4a8a4a, 0.6);
+    applyBg.strokeRoundedRect(x, y + 2, 60, 20, 3);
+    this.container.add(applyBg);
+    const applyText = scene.add.text(x + 30, y + 12, '📐 Uygula', { fontSize: '10px', color: '#aaffaa', fontFamily: 'monospace' }).setOrigin(0.5);
+    this.container.add(applyText);
+    applyBg.setSize(60, 20);
+    applyBg.setInteractive(new Phaser.Geom.Rectangle(x, y + 2, 60, 20), Phaser.Geom.Rectangle.Contains);
+    applyBg.on('pointerdown', () => {
+      this.scene.events.emit('resize-map', { cols: this._colsValue, rows: this._rowsValue });
+    });
+    applyBg.on('pointerover', () => { applyBg.clear(); applyBg.fillStyle(0x3a6a3a, 0.9); applyBg.fillRoundedRect(x, y + 2, 60, 20, 3); applyBg.lineStyle(1, 0x6aaa6a, 0.8); applyBg.strokeRoundedRect(x, y + 2, 60, 20, 3); });
+    applyBg.on('pointerout', () => { applyBg.clear(); applyBg.fillStyle(0x2a4a2a, 0.9); applyBg.fillRoundedRect(x, y + 2, 60, 20, 3); applyBg.lineStyle(1, 0x4a8a4a, 0.6); applyBg.strokeRoundedRect(x, y + 2, 60, 20, 3); });
+    x += 66;
+
+    // Kolon/Satır tıklama ile düzenleme
+    this._makeClickableValue(this._colsText, this._colsBgX, y, 32, (v) => { this._colsValue = v; this._colsText.setText(String(v)); });
+    this._makeClickableValue(this._rowsText, this._rowsBgX, y, 32, (v) => { this._rowsValue = v; this._rowsText.setText(String(v)); });
+
     // Sağ taraf: Zoom kontrolü
     const zoomX = W - 120;
     this._createZoomControls(zoomX, y, BTN_SIZE);
@@ -283,6 +348,32 @@ export class EditorToolbar {
 
   getHeight() {
     return this._toolbarH || 34;
+  }
+
+  _makeClickableValue(textObj, bgX, bgY, bgW, onChange) {
+    const scene = this.scene;
+    const hitArea = scene.add.zone(bgX, bgY + 2, bgW, 20).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+    hitArea.on('pointerdown', () => {
+      // Basit artır/azalt: sol tık +10, sağ tık -10
+      const step = scene.input.mouse && scene.input.mouse.manager && scene.input.mouse.manager.event && scene.input.mouse.manager.event.button === 2 ? -10 : 10;
+      const current = parseInt(textObj.text) || 10;
+      const newVal = Math.max(1, Math.min(500, current + 10));
+      onChange(newVal);
+    });
+    hitArea.on('pointerdown', (pointer) => {
+      const step = pointer.button === 2 ? -10 : 10;
+      const current = parseInt(textObj.text) || 10;
+      const newVal = Math.max(1, Math.min(500, current + step));
+      onChange(newVal);
+    });
+    this.container.add(hitArea);
+  }
+
+  updateMapSize(cols, rows) {
+    this._colsValue = cols;
+    this._rowsValue = rows;
+    if (this._colsText) this._colsText.setText(String(cols));
+    if (this._rowsText) this._rowsText.setText(String(rows));
   }
 
   destroy() {
