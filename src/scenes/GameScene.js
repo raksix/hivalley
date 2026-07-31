@@ -111,50 +111,8 @@ export class GameScene extends Phaser.Scene {
   buildMap() {
     this.mapContainer = this.add.container(0, 0);
 
-    // Generate a simple procedural farmland layout
-    // Grass everywhere, with a dirt path, farm plots, and some decorations.
-    this.tileSprites = [];
-
-    for (let row = 0; row < MAP_ROWS; row++) {
-      this.tileSprites[row] = [];
-      for (let col = 0; col < MAP_COLS; col++) {
-        const x = col * TILE + TILE / 2;
-        const y = row * TILE + TILE / 2;
-        let frame = TILE_GRASS;
-
-        // Dirt path (horizontal, row 9)
-        if (row === 9 && col >= 4 && col <= 25) {
-          frame = TILE_DIRT;
-        }
-        // Farm plots (rows 5-7, cols 6-12)
-        else if (row >= 5 && row <= 7 && col >= 6 && col <= 12) {
-          frame = TILE_TILLED;
-        }
-        // Second farm plot (rows 5-7, cols 17-23)
-        else if (row >= 5 && row <= 7 && col >= 17 && col <= 23) {
-          frame = TILE_TILLED;
-        }
-        // Scattered flowers
-        else if (
-          (row === 3 && col === 8) ||
-          (row === 4 && col === 15) ||
-          (row === 12 && col === 22) ||
-          (row === 14 && col === 5)
-        ) {
-          frame = TILE_FLOWER;
-        }
-        // Grass variation
-        else if ((row + col) % 5 === 0) {
-          frame = TILE_GRASS_ALT;
-        }
-
-        const tile = this.add.image(x, y, 'farm:tileset', frame);
-        tile.setOrigin(0.5);
-        tile.setDepth(0);
-        this.mapContainer.add(tile);
-        this.tileSprites[row][col] = tile;
-      }
-    }
+    // Ground tiles are now entirely handled by Kenney Tiny Farm overlay.
+    // Here we only place the farm objects (house, tree, fence, chest).
 
     // --- Farm objects ---
     // House (top-right area)
