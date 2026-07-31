@@ -351,13 +351,17 @@ export class GameScene extends Phaser.Scene {
     // Update facing and animation
     this.facing = newFacing;
     if (moving) {
-      if (!this.isMoving || this.player.anims.currentAnim?.key !== `farm:walk-${newFacing}`) {
-        this.player.play(`farm:walk-${newFacing}`);
+      const walkKey = `farm:walk-${newFacing}`;
+      if (this.anims.exists(walkKey) && (!this.isMoving || this.player.anims.currentAnim?.key !== walkKey)) {
+        this.player.play(walkKey);
       }
       this.isMoving = true;
     } else {
       if (this.isMoving) {
-        this.player.play(`farm:idle-${newFacing}`);
+        const idleKey = `farm:idle-${newFacing}`;
+        if (this.anims.exists(idleKey)) {
+          this.player.play(idleKey);
+        }
         this.isMoving = false;
       }
     }

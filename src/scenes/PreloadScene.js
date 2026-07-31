@@ -188,18 +188,22 @@ export class PreloadScene extends Phaser.Scene {
 
     // --- Character idle (128x96 = 8 cols x 3 rows, frame 16x32) ---
     // Row 0: down, Row 1: left, Row 2: right. Each row has 4 frames.
+    // NOTE: "up" direction uses "down" frames as fallback (no up spritesheet).
     if (!anims.exists('farm:idle-down')) {
       anims.create({ key: 'farm:idle-down',   frames: anims.generateFrameNumbers('farm:char-idle', { start: 0, end: 3 }),  frameRate: 4, repeat: -1 });
       anims.create({ key: 'farm:idle-left',   frames: anims.generateFrameNumbers('farm:char-idle', { start: 8, end: 11 }), frameRate: 4, repeat: -1 });
       anims.create({ key: 'farm:idle-right',  frames: anims.generateFrameNumbers('farm:char-idle', { start: 16, end: 19 }), frameRate: 4, repeat: -1 });
+      anims.create({ key: 'farm:idle-up',     frames: anims.generateFrameNumbers('farm:char-idle', { start: 0, end: 3 }),  frameRate: 4, repeat: -1 });
     }
 
     // --- Character walk (192x96 = 12 cols x 3 rows, frame 16x32) ---
     // Row 0: down, Row 1: left, Row 2: right. Each row has 6 frames.
+    // NOTE: "up" direction uses "down" frames as fallback (no up spritesheet).
     if (!anims.exists('farm:walk-down')) {
       anims.create({ key: 'farm:walk-down',  frames: anims.generateFrameNumbers('farm:char-walk', { start: 0, end: 5 }),  frameRate: 8, repeat: -1 });
       anims.create({ key: 'farm:walk-left',  frames: anims.generateFrameNumbers('farm:char-walk', { start: 12, end: 17 }), frameRate: 8, repeat: -1 });
       anims.create({ key: 'farm:walk-right', frames: anims.generateFrameNumbers('farm:char-walk', { start: 24, end: 29 }), frameRate: 8, repeat: -1 });
+      anims.create({ key: 'farm:walk-up',    frames: anims.generateFrameNumbers('farm:char-walk', { start: 0, end: 5 }),  frameRate: 8, repeat: -1 });
     }
 
     // --- Chicken idle (64x32 = 4 cols x 2 rows) ---

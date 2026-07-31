@@ -4,6 +4,7 @@ import { PreloadScene } from './scenes/PreloadScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { CharacterCreatorScene } from './scenes/CharacterCreatorScene.js';
 import { GameScene } from './scenes/GameScene.js';
+import { WorldEditor } from './editor/WorldEditor.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -17,12 +18,13 @@ const config = {
     width: 960,
     height: 540,
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, CharacterCreatorScene, GameScene],
+  scene: [BootScene, PreloadScene, MainMenuScene, CharacterCreatorScene, GameScene, WorldEditor],
 };
 
 const game = new Phaser.Game(config);
 
-// Debug helper: ?scene=GameScene jumps straight to that scene after preload.
+// Debug helper: ?scene=WorldEditor jumps straight to the world editor.
+// ?scene=GameScene jumps to the game scene.
 window.__game = game;
 window.__skipToScene = (sceneName) => {
   const url = new URL(window.location.href);
@@ -35,7 +37,6 @@ const target = params.get('scene');
 if (target) {
   // Wait until PreloadScene finishes, then jump.
   game.events.once('ready', () => {
-    // Make sure assets are ready (PreloadScene creates animations on create).
     setTimeout(() => {
       game.scene.stop('MainMenuScene');
       game.scene.stop('CharacterCreatorScene');
