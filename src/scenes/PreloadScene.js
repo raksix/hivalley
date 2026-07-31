@@ -15,7 +15,7 @@ const ASSETS = {
   // Idle.png: 128x96 → 8 cols x 3 rows. Rows: down, left, right.
   // Walk.png: 192x96 → 12 cols x 3 rows. Rows: down, left, right.
   charIdle:   { key: 'farm:char-idle',    url: 'assets/farm-rpg/Character/Idle.png', frameWidth: 32, frameHeight: 32 },
-  charWalk:   { key: 'farm:char-walk',    url: 'assets/farm-rpg/Character/Walk.png', frameWidth: 16, frameHeight: 32 },
+  charWalk:   { key: 'farm:char-walk',    url: 'assets/farm-rpg/Character/Walk.png', frameWidth: 32, frameHeight: 32 },
 
   // Tileset (16x16 tiles)
   tileset:    { key: 'farm:tileset',      url: 'assets/farm-rpg/Tileset/Tileset Spring.png', frameWidth: 16, frameHeight: 16 },
@@ -196,13 +196,13 @@ export class PreloadScene extends Phaser.Scene {
       anims.create({ key: 'farm:idle-up',     frames: anims.generateFrameNumbers('farm:char-idle', { start: 0, end: 3 }),  frameRate: 4, repeat: -1 });
     }
 
-    // --- Character walk (192x96 = 12 cols x 3 rows, frame 16x32) ---
-    // Row 0: down, Row 1: left, Row 2: right. Each row has 6 frames.
+    // --- Character walk (192x96 = 6 cols x 3 rows, frame 32x32) ---
+    // Row 0: down (frames 0-5), Row 1: left (frames 6-11), Row 2: right (frames 12-17).
     // NOTE: "up" direction uses "down" frames as fallback (no up spritesheet).
     if (!anims.exists('farm:walk-down')) {
       anims.create({ key: 'farm:walk-down',  frames: anims.generateFrameNumbers('farm:char-walk', { start: 0, end: 5 }),  frameRate: 8, repeat: -1 });
-      anims.create({ key: 'farm:walk-left',  frames: anims.generateFrameNumbers('farm:char-walk', { start: 12, end: 17 }), frameRate: 8, repeat: -1 });
-      anims.create({ key: 'farm:walk-right', frames: anims.generateFrameNumbers('farm:char-walk', { start: 24, end: 29 }), frameRate: 8, repeat: -1 });
+      anims.create({ key: 'farm:walk-left',  frames: anims.generateFrameNumbers('farm:char-walk', { start: 6, end: 11 }),  frameRate: 8, repeat: -1 });
+      anims.create({ key: 'farm:walk-right', frames: anims.generateFrameNumbers('farm:char-walk', { start: 12, end: 17 }), frameRate: 8, repeat: -1 });
       anims.create({ key: 'farm:walk-up',    frames: anims.generateFrameNumbers('farm:char-walk', { start: 0, end: 5 }),  frameRate: 8, repeat: -1 });
     }
 

@@ -348,6 +348,7 @@ export class GameScene extends Phaser.Scene {
     } else if (this.cursors.down.isDown || this.keys.s.isDown) {
       vy = PLAYER_SPEED;
       newFacing = 'down';
+      moving = true;
     }
 
     // Normalize diagonal movement
