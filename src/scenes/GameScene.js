@@ -198,6 +198,29 @@ export class GameScene extends Phaser.Scene {
     };
     const placeStand = (col, row, frame) => place(col, row, frame, KENNEY_DECOR.STAND);
 
+    // ---- Kenney grass ground layer (base layer under everything) ----
+    // Use Kenney grass variations across the entire map (except path, tilled, water)
+    const grassVariations = [
+      K.GRASS_LIGHT, K.GRASS_DARK, K.GRASS_GREEN_A, K.GRASS_GREEN_B,
+      K.GRASS_GREEN_C, K.GRASS_GREEN_D, K.GRASS_SPARSE
+    ];
+    let grassSeed = 42;
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        // Skip areas that have special tiles (path, tilled soil, water, wood border)
+        const isPath = (r === 9 && c >= 4 && c <= 25);
+        const isTilled = (r >= 5 && r <= 7 && ((c >= 6 && c <= 12) || (c >= 17 && c <= 23)));
+        const isWater = (r >= 13 && r <= 16 && c >= 24 && c <= 28);
+        const isWoodBorder = (r === 0 || r === MAP_ROWS - 1 || c === 0 || c === MAP_COLS - 1);
+
+        if (isPath || isTilled || isWater || isWoodBorder) continue;
+
+        grassSeed = (grassSeed * 1103515245 + 12345) & 0x7fffffff;
+        const frame = grassVariations[grassSeed % grassVariations.length];
+        place(c, r, frame);
+      }
+    }
+
     // ---- Wood plank border (top + bottom rows) ----
     for (let c = 0; c < MAP_COLS; c++) {
       place(c, 0, K.WOOD_PLANK_H);
@@ -234,13 +257,25 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ---- Pond in the SE corner (rows 13–15, cols 24–28) ----
-    for (let r = 13; r <= 15; r++) {
+    // ---- Pond in the SE corner (rows 13–16, cols 24–28) ----
+    // Top edge (row 13): WATER_EDGE_N with corners
+    for (let c = 24; c <= 28; c++) {
+      if (c === 24) place(c, 13, K.WATER_EDGE_N);     // left edge tile
+      else if (c === 28) place(c, 13, K.WATER_EDGE_N); // right edge tile
+      else place(c, 13, K.WATER_EDGE_N);
+    }
+    // Middle rows (14–15): full water with left/right edges
+    for (let r = 14; r <= 15; r++) {
       for (let c = 24; c <= 28; c++) {
-        const frame =
-          K.WATER_A + ((r * 5 + c) % 8); // cycle through WATER_A..WATER_H
-        place(c, r, frame);
+        const waterFrame = K.WATER_A + ((r * 5 + c) % 8);
+        if (c === 24) place(c, r, K.WATER_EDGE_W);
+        else if (c === 28) place(c, r, K.WATER_EDGE_E);
+        else place(c, r, waterFrame);
       }
+    }
+    // Bottom edge (row 16): WATER_EDGE_S (this row is the map's last-1 plank)
+    for (let c = 24; c <= 28; c++) {
+      place(c, 16, K.WATER_EDGE_S);
     }
 
     // ---- Grass detail (decorative flowers & tufts) ----
@@ -276,10 +311,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     // ---- New decorations (decorative objects) ----
-    // Bush (right side, row 4)
-    this.bush1 = placeStand(26, 4, K.BUSH_GREEN_A);
-    this.bush2 = placeStand(27, 4, K.BUSH_FLOWER);
-    this.bush3 = placeStand(2, 11, K.BUSH_BERRY);
+    // Bush (avoiding overlap with tilled plots, fences, and house/shrubs area)
+    this.bush1 = placeStand(25, 5, K.BUSH_GREEN_A);
+    this.bush2 = placeStand(27, 5, K.BUSH_FLOWER);
+    this.bush3 = placeStand(3, 11, K.BUSH_BERRY);
+    this.bush4 = placeStand(28, 12, K.BUSH_GREEN_B);
 
     // Crate (next to house)
     this.crate1 = placeStand(22, 10, K.CRATE_WOOD);
@@ -289,22 +325,28 @@ export class GameScene extends Phaser.Scene {
     this.barrel1 = placeStand(13, 10, K.BARREL_LIE);
 
     // Lantern (decorative lighting) near house
-    this.lantern1 = placeStand(20, 9, K.LANTERN);
+    this.lantern1 = placeStand(21, 8, K.LANTERN);
 
-    // Well (center of farm plots)
-    this.well1 = placeStand(14, 6, K.WELL);
+    // Well (between farm plots, on the path)
+    this.well1 = placeStand(14, 8, K.WELL);
 
-    // Sapling pine (top-left corner area)
-    this.pineYoung = placeStand(4, 2, K.TREE_PINE);
+    // Sapling pine (top area, avoiding the wood border)
+    this.pineYoung = placeStand(5, 3, K.TREE_PINE);
+
+    // Scarecrow in middle of east tilled plot
+    this.scarecrow = placeStand(20, 6, K.SCARECROW);
+
+    // Flower pot near house
+    this.flowerpot = placeStand(23, 9, K.FLOWER_POT);
 
     // ---- Fence segments along the tilled plots ----
-    // South fence of the first plot (row 8, cols 6–12)
+    // North fence of the first plot (row 4, cols 6–12)
     for (let c = 6; c <= 12; c++) {
-      place(c, 8, K.FENCE_H, KENNEY_DECOR.STAND);
-    }
-    // North fence of the second plot (row 4, cols 17–23)
-    for (let c = 17; c <= 23; c++) {
       place(c, 4, K.FENCE_H, KENNEY_DECOR.STAND);
+    }
+    // South fence of the second plot (row 8, cols 17–23)
+    for (let c = 17; c <= 23; c++) {
+      place(c, 8, K.FENCE_H, KENNEY_DECOR.STAND);
     }
   }
 
