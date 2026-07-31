@@ -536,9 +536,12 @@ class CharacterPreview {
 
     // Character sprite — added directly to scene.
     // The idle sheet is 16x32 per frame (full body), so scale 5 = 80x160 px.
-    this.sprite = scene.add.sprite(x, y, 'farm:char-idle', 0);
+    this.sprite = scene.add.sprite(x, y + 10, 'farm:char-idle', 0);
     this.sprite.setOrigin(0.5, 1);
     this.sprite.setScale(5);
+
+    // Start the idle-down animation so the character breathes/animates.
+    this.sprite.play('farm:idle-down');
 
     // Gender label — added directly to scene (not inside a container)
     this.genderLabel = scene.add.text(x, y + 10, '', {
@@ -556,6 +559,12 @@ class CharacterPreview {
 
     // Show gender
     this.genderLabel.setText(cap(draft.gender));
+
+    // Make sure the idle animation keeps playing (it may be cleared if a
+    // frame was set manually elsewhere).
+    if (!this.sprite.anims.isPlaying || this.sprite.anims.currentAnim?.key !== 'farm:idle-down') {
+      this.sprite.play('farm:idle-down', true);
+    }
   }
 }
 
