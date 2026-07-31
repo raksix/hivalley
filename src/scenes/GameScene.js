@@ -17,6 +17,7 @@ import {
   playClick,
 } from '../utils/menuMusic.js';
 import { PALETTE } from '../utils/palette.js';
+import { TEXTURES } from '../utils/textures.js';
 
 // Map dimensions in tiles (16x16 each)
 const MAP_COLS = 30;
@@ -108,6 +109,21 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => {
       startMenuMusic();
       this.scene.start('MainMenuScene');
+    });
+
+    // --- Custom cursor ---
+    this.input.setDefaultCursor('none');
+    this.cursorImg = this.add
+      .image(0, 0, TEXTURES.cursorDot())
+      .setScale(3)
+      .setDepth(9999)
+      .setScrollFactor(0);
+    this.input.on('pointermove', (p) => {
+      this.cursorImg.setPosition(p.x, p.y);
+    });
+    this.input.on('pointerdown', () => {
+      this.cursorImg.setScale(4);
+      setTimeout(() => this.cursorImg.setScale(3), 80);
     });
 
     // Fade in

@@ -104,24 +104,32 @@ export class Button extends Phaser.GameObjects.Container {
       this._isHover = true;
       this._refresh();
     });
+
     this.on('pointerout', () => {
       if (this.disabled) return;
       this._isHover = false;
+      // Reset pressed state when leaving the button area
+      this._setPressed(false);
       if (!this._isFocused) this._refresh();
     });
+
     this.on('pointerdown', () => {
       if (this.disabled) return;
       this._setPressed(true);
     });
+
     this.on('pointerup', () => {
       if (this.disabled) return;
       this._setPressed(false);
       if (cfg.onClick) cfg.onClick();
     });
+
     this.on('pointerupoutside', () => this._setPressed(false));
 
-    scene.add.existing(this);
+    // Additional safety: reset pressed on visibility/active changes
+    this.on('destroy', () => this._setPressed(false));
 
+    scene.add.existing(this);
     this._refresh();
   }
 
@@ -152,7 +160,6 @@ export class Button extends Phaser.GameObjects.Container {
       key = this.cfg.hoverKey || 'gen:btn-hover';
     else key = this.cfg.idleKey || 'gen:btn-idle';
     if (this.bg.texture.key !== key) this.bg.setTexture(key);
-
     const c = this.disabled
       ? '#7a6a55'
       : this._isFocused || this._isHover
