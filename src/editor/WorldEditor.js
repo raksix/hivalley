@@ -82,6 +82,9 @@ export class WorldEditor extends Phaser.Scene {
     this.clipboard = null;
     this.clipboardOrigin = null;
 
+    // Asset yerleştirme rotation'ı (0/1/2/3 → 0°/90°/180°/270°)
+    this._placementRotation = 0;
+
     // ─── DİNAMİK MAP BOYUTU ──────────────────────────
     this.mapCols = INITIAL_COLS;
     this.mapRows = INITIAL_ROWS;
@@ -428,7 +431,7 @@ export class WorldEditor extends Phaser.Scene {
     });
     k.on('keydown-M', () => this.toolbar.setActiveTool('move'));
     k.on('keydown-F', () => this.toolbar.setActiveTool('fill'));
-    k.on('keydown-R', () => this.toolbar.setActiveTool('rect'));
+    k.on('keydown-R', () => this._rotatePlacementPreview());
 
     // Object rotation
     k.on('keydown-T', () => this._rotateSelectedObject());
@@ -495,6 +498,24 @@ export class WorldEditor extends Phaser.Scene {
         this._selectAll();
       }
     });
+  }
+
+  // ═══════════════════════════════════════════════════
+  // ASSET ROTATION (R tuşu ile yerleştirme açısı)
+  // ═══════════════════════════════════════════════════
+
+  _rotatePlacementPreview() {
+    if (!this.selectedAsset) return;
+
+    this._placementRotation = (this._placementRotation + 1) % 4;
+    const deg = this._placementRotation * 90;
+
+    // Cursor preview'a rotation uygula
+    if (this.cursorPreview) {
+      this.cursorPreview.setAngle(deg);
+    }
+
+    this._showNotification(`Rotation: ${deg}°`, 800);
   }
 
   _handleMouseMove(pointer) {
@@ -626,6 +647,7 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: asset.textureKey,
         frame: asset.frame,
         assetId: asset.id,
+        rotation: this._placementRotation,
       };
 
       // Tile'ı render et
@@ -688,6 +710,8 @@ export class WorldEditor extends Phaser.Scene {
       sprite.setName(key);
       sprite.setDisplaySize(TILE, TILE);
       sprite.setDepth(1); // Grid'in altında
+      // Tile rotation
+      if (data.rotation) sprite.setAngle(data.rotation * 90);
       // Tile sprite'ı sadece main kamerada render edilsin
       if (this.uiCamera) this.uiCamera.ignore(sprite);
     } catch (e) {
@@ -732,8 +756,11 @@ export class WorldEditor extends Phaser.Scene {
         textureKey: asset.textureKey,
         tileX,
         tileY,
-        rotation: 0,
+        rotation: this._placementRotation,
       });
+      if (this._placementRotation) {
+        sprite.setAngle(this._placementRotation * 90);
+      }
     } catch (e) {
       console.warn(`Object placement hatası:`, e);
     }
@@ -877,6 +904,7 @@ export class WorldEditor extends Phaser.Scene {
         }
         this.cursorPreview.setPosition(x + TILE / 2, y + TILE / 2);
         this.cursorPreview.setDisplaySize(TILE, TILE);
+        this.cursorPreview.setAngle(this._placementRotation * 90);
         this.cursorPreview.setVisible(true);
       } catch (e) {
         this.cursorPreview.setVisible(false);
