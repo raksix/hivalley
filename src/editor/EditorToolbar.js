@@ -129,7 +129,6 @@ export class EditorToolbar {
     this.container.add(applyBg);
     const applyText = scene.add.text(x + 30, y + 12, '📐 Uygula', { fontSize: '10px', color: '#aaffaa', fontFamily: 'monospace' }).setOrigin(0.5);
     this.container.add(applyText);
-    applyBg.setSize(60, 20);
     applyBg.setInteractive(new Phaser.Geom.Rectangle(x, y + 2, 60, 20), Phaser.Geom.Rectangle.Contains);
     applyBg.on('pointerdown', () => {
       this.scene.events.emit('resize-map', { cols: this._colsValue, rows: this._rowsValue });
