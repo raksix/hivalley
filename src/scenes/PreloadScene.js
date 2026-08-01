@@ -30,7 +30,7 @@ const ASSETS = {
   tree:       { key: 'farm:tree',         url: 'assets/farm-rpg/Objects/Maple Tree.png' },
   fence:      { key: 'farm:fence',        url: "assets/farm-rpg/Objects/Fence's copiar.png" },
   road:       { key: 'farm:road',         url: 'assets/farm-rpg/Objects/Road copiar.png' },
-  chest:      { key: 'farm:chest',        url: 'assets/farm-rpg/Objects/chest.png' },
+  chest:      { key: 'farm:chest',        url: 'assets/farm-rpg/Objects/chest.png', frameWidth: 32, frameHeight: 16 },
 
   // Farm animals
   chickYellow: { key: 'farm:chick-yellow', url: 'assets/farm-rpg/Farm Animals/Baby Chicken Yellow.png', frameWidth: 16, frameHeight: 16 },
@@ -221,6 +221,13 @@ export class PreloadScene extends Phaser.Scene {
     if (!anims.exists('farm:cow-female-idle')) {
       anims.create({ key: 'farm:cow-female-idle', frames: anims.generateFrameNumbers('farm:cow-female', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
       anims.create({ key: 'farm:cow-male-idle',   frames: anims.generateFrameNumbers('farm:cow-male',   { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
+    }
+
+    // --- Chest (32x32 → 2 frames at 32x16 each: frame 0 = closed, frame 1 = open) ---
+    if (!anims.exists('farm:chest-closed')) {
+      anims.create({ key: 'farm:chest-closed', frames: [{ key: 'farm:chest', frame: 0 }], frameRate: 1, repeat: 0 });
+      anims.create({ key: 'farm:chest-open',   frames: [{ key: 'farm:chest', frame: 1 }], frameRate: 1, repeat: 0 });
+      anims.create({ key: 'farm:chest-idle',   frames: anims.generateFrameNumbers('farm:chest', { start: 0, end: 1 }), frameRate: 2, repeat: 0 });
     }
 
     // --- Crops growth stages (224x128 = 14 cols x 8 rows, 16x16 each) ---
