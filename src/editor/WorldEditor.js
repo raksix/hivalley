@@ -111,6 +111,10 @@ export class WorldEditor extends Phaser.Scene {
     this._setupInput();
     this._setupEvents();
 
+    // Kamera ignore listelerini uygula — main kamera UI'ı,
+    // UI kamerası world'ü görmezden gelir
+    this._applyCameraIgnoreLists();
+
     // Başlangıç mesajı
     this._showNotification('World Editor yüklendi! Sol panelden asset seçin.', 3000);
   }
@@ -129,6 +133,59 @@ export class WorldEditor extends Phaser.Scene {
     );
     this.cameras.main.centerOn(cx, cy);
     this.cameras.main.setZoom(this.zoom);
+
+    // UI için ayrı kamera — zoom=1 ile render eder,
+    // Container + scrollFactor(0) + zoom etkileşimini çözer
+    this._uiElements = [];
+    const W = this.scale.width;
+    const H = this.scale.height;
+    this.uiCamera = this.cameras.add(0, 0, W, H);
+    this.uiCamera.setZoom(1);
+    this.uiCamera.setBackgroundColor('rgba(0,0,0,0)');
+    // UI kamera scrollsuz, bounds'suz çalışır
+    this.uiCamera.setBounds(0, 0, W, H);
+  }
+
+  /**
+   * UI element'ini hem scene'e ekler hem de _uiElements listesine kaydeder.
+   * Döndürülen obje camera ignore listesi için kullanılır.
+   */
+  _addUIElement(obj) {
+    if (obj) this._uiElements.push(obj);
+    return obj;
+  }
+
+  /**
+   * Tüm UI ve world elementlerini ilgili kameralara böler.
+   * _setupUI tamamlandıktan sonra çağrılır.
+   */
+  _applyCameraIgnoreLists() {
+    if (!this.uiCamera) return;
+
+    // Main kamera: UI elementlerini göz ardı etsin
+    if (this._uiElements.length > 0) {
+      this.cameras.main.ignore(this._uiElements);
+    }
+
+    // UI kamera: World elementlerini göz ardı etsin
+    const worldElements = [
+      this.mapBg, this.gridGraphics,
+      this.cursorGraphics, this.cursorPreview,
+    ].filter(Boolean);
+
+    // Tile sprites'ları ve object sprites'ları da world element
+    if (this.tileSprites) {
+      this.tileSprites.forEach(row => {
+        if (row) row.forEach(s => { if (s) worldElements.push(s); });
+      });
+    }
+    this.objects.forEach(obj => {
+      if (obj && obj.sprite) worldElements.push(obj.sprite);
+    });
+
+    if (worldElements.length > 0) {
+      this.uiCamera.ignore(worldElements);
+    }
   }
 
   _setZoom(newZoom) {
@@ -261,24 +318,34 @@ export class WorldEditor extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // ─── AYRI UI CAMERA ──────────────────────────────
-    // Ana camera'dan bağımsız, zoom/scroll'dan etkilenmeyen UI camera'sı
-    this.uiCamera = this.cameras.add(0, 0, W, H);
-    this.uiCamera.setZoom(1);
-    this.uiCamera.setBackgroundColor('rgba(0,0,0,0)');
-
     // Toolbar
     this.toolbar = new EditorToolbar(this);
-    if (this.toolbar.container) this.toolbar.container.setScrollFactor(0);
+    if (this.toolbar.container) {
+      this.toolbar.container.setScrollFactor(0);
+      this.toolbar.container.setDepth(1000);
+      this._addUIElement(this.toolbar.container);
+    }
 
     // Palette panel
     this.palette = new EditorPalette(this);
-    if (this.palette.container) this.palette.container.setScrollFactor(0);
+    if (this.palette.container) {
+      this.palette.container.setScrollFactor(0);
+      this.palette.container.setDepth(900);
+      this._addUIElement(this.palette.container);
+    }
 
     // Status bar (alt)
     this._createStatusBar();
-    if (this.statusBar) this.statusBar.setScrollFactor(0);
-    if (this.statusText) this.statusText.setScrollFactor(0);
+    if (this.statusBar) {
+      this.statusBar.setScrollFactor(0);
+      this.statusBar.setDepth(1000);
+      this._addUIElement(this.statusBar);
+    }
+    if (this.statusText) {
+      this.statusText.setScrollFactor(0);
+      this.statusText.setDepth(1001);
+      this._addUIElement(this.statusText);
+    }
 
     // Koordinat göstergesi
     this.coordText = this.add.text(W - 10, H - 24, '', {
@@ -286,6 +353,7 @@ export class WorldEditor extends Phaser.Scene {
       color: '#aaaacc',
       fontFamily: 'monospace',
     }).setOrigin(1, 0).setDepth(1100).setScrollFactor(0);
+    this._addUIElement(this.coordText);
 
     // Tile count
     this.tileCountText = this.add.text(16, H - 24, '', {
@@ -293,38 +361,9 @@ export class WorldEditor extends Phaser.Scene {
       color: '#aaaacc',
       fontFamily: 'monospace',
     }).setDepth(1100).setScrollFactor(0);
+    this._addUIElement(this.tileCountText);
 
     this._updateTileCount();
-
-    // UI camera sadece UI elementlerini render etsin, harita objelerini ignore etsin
-    this._setupUICamera();
-  }
-
-  _setupUICamera() {
-    // Ana camera'daki harita objelerini topla
-    const mapObjects = [
-      this.mapBg, this.gridGraphics, this.cursorGraphics, this.cursorPreview,
-      this.selectionRect, ...this.objects.map(o => o.sprite),
-    ].filter(Boolean);
-
-    // Tile sprite'larını da ekle
-    for (let y = 0; y < this.mapRows; y++) {
-      for (let x = 0; x < this.mapCols; x++) {
-        const key = `tile_${x}_${y}`;
-        const tile = this.children.getByName(key);
-        if (tile) mapObjects.push(tile);
-      }
-    }
-
-    // UI camera harita objelerini ignore etsin
-    this.uiCamera.ignore(mapObjects);
-
-    // Ana camera UI objelerini ignore etsin
-    const uiObjects = [
-      this.toolbar?.container, this.palette?.container,
-      this.statusBar, this.statusText, this.coordText, this.tileCountText,
-    ].filter(Boolean);
-    this.cameras.main.ignore(uiObjects);
   }
 
   _createStatusBar() {
@@ -649,7 +688,7 @@ export class WorldEditor extends Phaser.Scene {
       sprite.setName(key);
       sprite.setDisplaySize(TILE, TILE);
       sprite.setDepth(1); // Grid'in altında
-      // UI camera'dan gizle
+      // Tile sprite'ı sadece main kamerada render edilsin
       if (this.uiCamera) this.uiCamera.ignore(sprite);
     } catch (e) {
       console.warn(`Tile render hatası (${tileX},${tileY}):`, e);
@@ -684,9 +723,8 @@ export class WorldEditor extends Phaser.Scene {
       const sprite = this.add.image(x, y, asset.textureKey, 0);
       sprite.setDepth(5);
       sprite.setDisplaySize(asset.width || 32, asset.height || 32);
-      // UI camera'dan gizle
+      // Object sprite'ı sadece main kamerada render edilsin
       if (this.uiCamera) this.uiCamera.ignore(sprite);
-
       // Object listesine ekle
       this.objects.push({
         sprite,
@@ -732,7 +770,6 @@ export class WorldEditor extends Phaser.Scene {
     this._selectionHighlight.setFillStyle(0x00ff88, 0.15);
     this._selectionHighlight.setDepth(4);
     this._selectionHighlight.setAngle(obj.sprite.angle);
-    if (this.uiCamera) this.uiCamera.ignore(this._selectionHighlight);
   }
 
   _rotateSelectedObject() {
@@ -857,8 +894,7 @@ export class WorldEditor extends Phaser.Scene {
     this.selectionStart = { x: worldX, y: worldY };
     this.selectionRect = this.add.graphics();
     this.selectionRect.setDepth(50);
-    // UI camera'dan gizle
-    if (this.uiCamera) this.uiCamera.ignore(this.selectionRect);
+
   }
 
   _updateSelectionRect(worldX, worldY) {
@@ -1411,6 +1447,11 @@ export class WorldEditor extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2001);
     text.setScrollFactor(0);
 
+    // Bildirim elementleri sadece UI kamerada render edilsin
+    if (this.cameras && this.cameras.main) {
+      this.cameras.main.ignore([bg, text]);
+    }
+
     this.time.delayedCall(duration, () => {
       bg.destroy();
       text.destroy();
@@ -1438,5 +1479,10 @@ export class WorldEditor extends Phaser.Scene {
     // Toolbar ve palette temizle
     if (this.toolbar) this.toolbar.destroy();
     if (this.palette) this.palette.destroy();
+    // UI kamerayı temizle
+    if (this.uiCamera) {
+      this.cameras.remove(this.uiCamera);
+      this.uiCamera = null;
+    }
   }
 }
